@@ -65,6 +65,10 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
 
     override val binding by viewBinding(ActivityMainBinding::inflate)
     override val viewModel by viewModels<MainViewModel>()
+    private val showDiscoveryTab: Boolean
+        get() = false
+    private val showRssTab: Boolean
+        get() = false
     private val idBookshelf = 0
     private val idBookshelf1 = 11
     private val idBookshelf2 = 12
@@ -352,8 +356,8 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
     }
 
     private fun upBottomMenu() {
-        val showDiscovery = AppConfig.showDiscovery
-        val showRss = AppConfig.showRSS
+        val showDiscovery = showDiscoveryTab && AppConfig.showDiscovery
+        val showRss = showRssTab && AppConfig.showRSS
         binding.bottomNavigationView.menu.let { menu ->
             menu.findItem(R.id.menu_discovery).isVisible = showDiscovery
             menu.findItem(R.id.menu_rss).isVisible = showRss
@@ -376,11 +380,11 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
     private fun upHomePage() {
         when (AppConfig.defaultHomePage) {
             "bookshelf" -> {}
-            "explore" -> if (AppConfig.showDiscovery) {
+            "explore" -> if (showDiscoveryTab && AppConfig.showDiscovery) {
                 binding.viewPagerMain.setCurrentItem(realPositions.indexOf(idExplore), false)
             }
 
-            "rss" -> if (AppConfig.showRSS) {
+            "rss" -> if (showRssTab && AppConfig.showRSS) {
                 binding.viewPagerMain.setCurrentItem(realPositions.indexOf(idRss), false)
             }
 
