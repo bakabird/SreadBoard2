@@ -139,6 +139,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flowOn
 
 /**
  * 阅读界面
@@ -243,6 +245,9 @@ class ReadBookActivity : BaseReadBookActivity(),
     private val prevPageDebounce by lazy { Debounce { keyPage(PageDirection.PREV) } }
     private var bookChanged = false
     private var pageChanged = false
+    private var observedInsightBookUrl: String? = null
+    private var observedInsightChapterIndex: Int = -1
+    private var chapterInsightJob: Job? = null
     private val handler by lazy { buildMainHandler() }
     private val screenOffRunnable by lazy { Runnable { keepScreenOn(false) } }
     private val executor = ReadBook.executor
@@ -1014,6 +1019,7 @@ class ReadBookActivity : BaseReadBookActivity(),
             binding.readView.upContent(relativePosition, resetPageOffset)
             if (relativePosition == 0) {
                 upSeekBarProgress()
+                observeCurrentChapterInsight()
             }
             loadStates = false
             success?.invoke()
@@ -1028,8 +1034,67 @@ class ReadBookActivity : BaseReadBookActivity(),
         binding.readView.upContent(relativePosition, resetPageOffset)
         if (relativePosition == 0) {
             upSeekBarProgress()
+            observeCurrentChapterInsight()
         }
         loadStates = false
+    }
+
+    private fun observeCurrentChapterInsight() {
+        val book = ReadBook.book ?: return
+        val bookUrl = book.bookUrl
+        val chapterIndex = ReadBook.durChapterIndex
+        if (observedInsightBookUrl == bookUrl && observedInsightChapterIndex == chapterIndex) {
+            return
+        }
+        observedInsightBookUrl = bookUrl
+        observedInsightChapterIndex = chapterIndex
+
+        binding.readView.curPage.setInsightBlock(null)
+        chapterInsightJob?.cancel()
+        chapterInsightJob = lifecycleScope.launch {
+            appDb.chapterInsightDao.flow(bookUrl, chapterIndex)
+                .flowOn(IO)
+                .distinctUntilChanged()
+                .collect { insight ->
+                    val label = when (insight?.skipRiskLabel ?: 0) {
+                        1 -> "Water Chapter"
+                        2 -> "Low Value"
+                        3 -> "Caution Jump"
+                        4 -> "Must Read"
+                        else -> ""
+                    }
+                    val summary = insight?.summary?.let(::sanitizeInsightSummary).orEmpty().trim()
+                    val block = if (label.isNotBlank() && summary.isNotBlank()) {
+                        ContentTextView.InsightBlock(
+                            riskLabel = label,
+                            summary = summary,
+                        )
+                    } else {
+                        null
+                    }
+                    block?.let {
+                        val height = ChapterProvider.calculateInsightBlockHeight(it.riskLabel, it.summary)
+                        val currentHeight = ChapterProvider.getInsightHeight(chapterIndex)
+                        if (currentHeight != height) {
+                            ChapterProvider.setInsightHeight(chapterIndex, height)
+                            // Trigger reload to apply new layout
+                            ReadBook.loadContent(chapterIndex, resetPageOffset = false)
+                        }
+                    }
+                    binding.readView.curPage.setInsightBlock(block)
+                }
+        }
+    }
+
+    private fun sanitizeInsightSummary(raw: String): String {
+        val trimmed = raw.trim()
+        val thinkStart = trimmed.indexOf("<think>")
+        val thinkEnd = trimmed.indexOf("</think>")
+        return if (thinkStart >= 0 && thinkEnd > thinkStart) {
+            (trimmed.substring(0, thinkStart) + trimmed.substring(thinkEnd + "</think>".length)).trim()
+        } else {
+            trimmed
+        }
     }
 
     override fun upPageAnim(upRecorder: Boolean) {
@@ -1226,13 +1291,21 @@ class ReadBookActivity : BaseReadBookActivity(),
     }
 
     override fun showInsights() {
+        showInsightsSheet(readOnly = false)
+    }
+
+    override fun onInsightClick() {
+        showInsightsSheet(readOnly = true)
+    }
+
+    private fun showInsightsSheet(readOnly: Boolean) {
         ReadBook.book?.let { book ->
             lifecycleScope.launch {
-                val chapter = withContext(Dispatchers.IO) {
+                val chapter = withContext(IO) {
                     appDb.bookChapterDao.getChapter(book.bookUrl, ReadBook.durChapterIndex)
                 }
                 if (chapter != null) {
-                    showDialogFragment(InsightsBottomSheet(book, chapter))
+                    showDialogFragment(InsightsBottomSheet(book, chapter, readOnly = readOnly))
                 } else {
                     toastOnUi("Chapter not found")
                 }

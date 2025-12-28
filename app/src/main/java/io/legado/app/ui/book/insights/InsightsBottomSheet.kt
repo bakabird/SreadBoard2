@@ -20,7 +20,11 @@ import io.legado.app.utils.visible
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
-class InsightsBottomSheet(private val book: Book, private val chapter: BookChapter) : BottomSheetDialogFragment() {
+class InsightsBottomSheet(
+    private val book: Book,
+    private val chapter: BookChapter,
+    private val readOnly: Boolean = false,
+) : BottomSheetDialogFragment() {
 
     private var _binding: DialogChapterInsightsBinding? = null
     private val binding get() = _binding!!
@@ -35,27 +39,36 @@ class InsightsBottomSheet(private val book: Book, private val chapter: BookChapt
 
         binding.tvTitle.text = "Chapter ${chapter.index + 1} Insights"
         binding.ivClose.setOnClickListener { dismiss() }
-        binding.tvTaskQueue.setOnClickListener {
-            AITaskQueueDialog().show(parentFragmentManager, "AITaskQueueDialog")
+        if (readOnly) {
+            binding.tvTaskQueue.gone()
+            binding.btnRetrySummary.gone()
+            binding.btnRetrySkipRisk.gone()
+            binding.btnSkipChapter.gone()
+        } else {
+            binding.tvTaskQueue.setOnClickListener {
+                AITaskQueueDialog().show(parentFragmentManager, "AITaskQueueDialog")
+            }
         }
 
         initTabs()
         observeData()
 
-        // Trigger generation if needed
+        if (readOnly) {
+            return
+        }
+
         InsightManager.generateSummary(book, chapter)
         InsightManager.generateSkipRisk(book, chapter.index)
 
         binding.btnRetrySummary.setOnClickListener {
-             InsightManager.generateSummary(book, chapter, force = true)
+            InsightManager.generateSummary(book, chapter, force = true)
         }
 
         binding.btnRetrySkipRisk.setOnClickListener {
-             InsightManager.generateSkipRisk(book, chapter.index, force = true)
+            InsightManager.generateSkipRisk(book, chapter.index, force = true)
         }
 
         binding.btnSkipChapter.setOnClickListener {
-            // Callback to skip chapter
             (activity as? Callback)?.onSkipChapter(chapter.index)
             dismiss()
         }
@@ -114,9 +127,9 @@ class InsightsBottomSheet(private val book: Book, private val chapter: BookChapt
                 // Update Skip Risk UI
                 if (insight.skipRiskLabel > 0) {
                     binding.tvSkipRiskLabel.text = when(insight.skipRiskLabel) {
-                        1 -> "Filler"
+                        1 -> "Water Chapter"
                         2 -> "Low Value"
-                        3 -> "Skip with Caution"
+                        3 -> "Caution Jump"
                         4 -> "Must Read"
                         else -> "Unknown"
                     }

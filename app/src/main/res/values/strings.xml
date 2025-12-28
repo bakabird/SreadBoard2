@@ -37,7 +37,7 @@
     <string name="delete">Delete</string>
     <string name="delete_select_group">Delete Select Group</string>
     <string name="delete_all">Delete all</string>
-    <string name="custom_export_section">Custom export chapter of epub</string>
+    <string name="custom_export_section" translatable="false">Custom export chapter of epub</string>
     <string name="replace">Replace</string>
     <string name="replace_purify">Replacement</string>
     <string name="replace_purify_desc">Configure replacement rules</string>
@@ -254,7 +254,7 @@
     <string name="find_on_www">Discovery</string>
     <string name="find_source_manage">Discovery</string>
     <string name="find_empty">No content.Go to Sources management to add it!</string>
-    <string name="del_all">Delete all</string>
+    <string name="del_all" translatable="false">Delete all</string>
     <string name="searchHistory">Search history</string>
     <string name="clear">Clear</string>
     <string name="showTitle">Display book title on text</string>
@@ -1219,15 +1219,15 @@
     <string name="hide_manga_title">隐藏漫画列表标题</string>
     <string name="refresh_explore">刷新发现</string>
     <string name="padding_display_cutouts">Padding display cutouts</string>
-    <string name="system_media_control_compatibility_change">System Media Control Compatibility Change</string>
-    <string name="system_media_control_compatibility_change_summary">If system media controls do not appear on the lock screen, you can try enabling this, for example on OneUI 7.0 or Vivo devices.</string>
-    <string name="read_aloud_pause_resume">Pause/Resume Speech</string>
+    <string name="system_media_control_compatibility_change" translatable="false">System Media Control Compatibility Change</string>
+    <string name="system_media_control_compatibility_change_summary" translatable="false">If system media controls do not appear on the lock screen, you can try enabling this, for example on OneUI 7.0 or Vivo devices.</string>
+    <string name="read_aloud_pause_resume" translatable="false">Pause/Resume Speech</string>
     <string name="manga_epaper">墨水屏</string>
     <string name="manga_epaper_stting">墨水屏设置</string>
     <string name="manga_epaper_value">阈值</string>
     <string name="disable_horizontal_page_snap">禁用水平翻页效果</string>
     <string name="enable_manga_gray">开启图片灰色</string>
-    <string name="play_mode">播放模式</string>
+    <string name="play_mode" translatable="false">播放模式</string>
     <string name="sure_cache_book">是否确认开始缓存？</string>
     <string name="auto_check_new_backup_t">自动检查新备份</string>
     <string name="auto_check_new_backup_s">打开软件时检查是否有新备份，有新备份时提示是否更新</string>

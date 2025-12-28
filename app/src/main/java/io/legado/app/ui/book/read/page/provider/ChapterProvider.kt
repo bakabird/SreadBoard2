@@ -39,6 +39,7 @@ import kotlinx.coroutines.CoroutineScope
 import splitties.init.appCtx
 import java.util.LinkedList
 import java.util.Locale
+import java.util.concurrent.ConcurrentHashMap
 
 /**
  * 解析内容生成章节和页面
@@ -147,6 +148,8 @@ object ChapterProvider {
     @JvmStatic
     var visibleRect = RectF()
 
+    private val insightHeights = ConcurrentHashMap<Int, Int>()
+
     private val handler by lazy {
         buildMainHandler()
     }
@@ -155,6 +158,39 @@ object ChapterProvider {
 
     init {
         upStyle()
+    }
+
+    fun setInsightHeight(index: Int, height: Int) {
+        insightHeights[index] = height
+    }
+
+    fun getInsightHeight(index: Int): Int {
+        return insightHeights[index] ?: 0
+    }
+
+    fun clearInsightHeights() {
+        insightHeights.clear()
+    }
+
+    fun calculateInsightBlockHeight(riskLabel: String, summary: String): Int {
+        val paddingV = 6.dpToPx()
+        val gap = 4.dpToPx()
+
+        // Label Paint
+        val labelPaint = TextPaint(contentPaint).apply {
+            textSize = contentPaint.textSize * 0.9f
+        }
+        val labelFm = labelPaint.fontMetrics
+        val labelHeight = labelFm.descent - labelFm.ascent
+
+        // Summary Paint
+        val summaryPaint = TextPaint(contentPaint)
+        val summaryFm = summaryPaint.fontMetrics
+        val summaryHeight = summaryFm.descent - summaryFm.ascent
+
+        // ContentTextView logic:
+        // val blockHeight = paddingV + labelHeight + gap + summaryHeight + paddingV
+        return (paddingV + labelHeight + gap + summaryHeight + paddingV).toInt()
     }
 
     /**
@@ -195,6 +231,10 @@ object ChapterProvider {
             textPages.last().lines.last().isParagraphEnd = true
             stringBuilder.append("\n")
             durY += titleBottomSpacing
+        }
+        val insightHeight = getInsightHeight(bookChapter.index)
+        if (insightHeight > 0) {
+            durY += insightHeight
         }
         contents.forEach { content ->
             if (book.getImageStyle().equals(Book.imgStyleText, true)) {

@@ -110,6 +110,7 @@ object ReadBook : CoroutineScope by MainScope() {
         durChapterPos = book.durChapterPos
         isLocalBook = book.isLocal
         clearTextChapter()
+        ChapterProvider.clearInsightHeights()
         callBack?.upContent()
         callBack?.upMenuView()
         callBack?.upPageAnim()
@@ -136,6 +137,7 @@ object ReadBook : CoroutineScope by MainScope() {
             durChapterIndex = book.durChapterIndex
             durChapterPos = book.durChapterPos
             clearTextChapter()
+            ChapterProvider.clearInsightHeights()
         }
         if (curTextChapter?.isCompleted == false) {
             curTextChapter = null

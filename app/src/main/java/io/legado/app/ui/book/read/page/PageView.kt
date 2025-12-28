@@ -328,6 +328,10 @@ class PageView(context: Context) : FrameLayout(context) {
         binding.contentTextView.setContent(textPage)
     }
 
+    fun setInsightBlock(insightBlock: ContentTextView.InsightBlock?) {
+        binding.contentTextView.setInsightBlock(insightBlock)
+    }
+
     fun invalidateContentView() {
         binding.contentTextView.invalidate()
     }

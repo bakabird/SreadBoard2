@@ -3,12 +3,16 @@ package io.legado.app.ui.book.read.page
 import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Paint
+import android.graphics.RectF
+import android.text.TextPaint
+import android.text.TextUtils
 import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.View
 import io.legado.app.R
 import io.legado.app.data.entities.Bookmark
 import io.legado.app.help.config.AppConfig
+import io.legado.app.help.config.ReadBookConfig
 import io.legado.app.model.ReadBook
 import io.legado.app.ui.book.read.page.delegate.PageDelegate
 import io.legado.app.ui.book.read.page.entities.TextLine
@@ -68,6 +72,14 @@ class ContentTextView(context: Context, attrs: AttributeSet?) : View(context, at
         }
     }
 
+    data class InsightBlock(
+        val riskLabel: String,
+        val summary: String,
+    )
+
+    private var insightBlock: InsightBlock? = null
+    private val insightHitRect = RectF()
+
     init {
         callBack = activity as CallBack
     }
@@ -101,6 +113,7 @@ class ContentTextView(context: Context, attrs: AttributeSet?) : View(context, at
         check(!visibleRect.isEmpty) { "visibleRect 为空" }
         canvas.clipRect(visibleRect)
         drawPage(canvas)
+        drawInsightBlock(canvas)
     }
 
     /**
@@ -213,6 +226,7 @@ class ContentTextView(context: Context, attrs: AttributeSet?) : View(context, at
         y: Float,
         select: (textPos: TextPos) -> Unit,
     ) {
+        if (insightHitRect.contains(x, y)) return
         touch(x, y) { _, textPos, _, _, column ->
             when (column) {
                 is ImageColumn -> callBack.onImageLongPress(x, y, column.src)
@@ -231,6 +245,10 @@ class ContentTextView(context: Context, attrs: AttributeSet?) : View(context, at
      */
     @Suppress("UNUSED_ANONYMOUS_PARAMETER")
     fun click(x: Float, y: Float): Boolean {
+        if (insightHitRect.contains(x, y)) {
+            callBack.onInsightClick()
+            return true
+        }
         var handled = false
         touch(x, y) { _, textPos, textPage, textLine, column ->
             when (column) {
@@ -650,6 +668,142 @@ class ContentTextView(context: Context, attrs: AttributeSet?) : View(context, at
         return null
     }
 
+    fun setInsightBlock(insightBlock: InsightBlock?) {
+        val changed = this.insightBlock != insightBlock
+        this.insightBlock = insightBlock
+        if (changed) {
+            postInvalidate()
+        }
+    }
+
+    private fun drawInsightBlock(canvas: Canvas) {
+        insightHitRect.setEmpty()
+        val block = insightBlock ?: return
+
+        fun drawForPage(page: TextPage, relativeOffset: Float) {
+            if (page.index != 0) {
+                return
+            }
+            val lines = page.lines
+            if (lines.isEmpty()) {
+                return
+            }
+            val lastTitleBottom = lines.asSequence()
+                .filter { it.isTitle }
+                .map { it.lineBottom }
+                .maxOrNull() ?: ChapterProvider.paddingTop.toFloat()
+
+            val firstNonTitleTop = lines.firstOrNull { !it.isTitle }?.lineTop
+
+            // If there is text, check for space. If no text, assume space is available (e.g. empty chapter with just insight).
+            if (firstNonTitleTop != null && firstNonTitleTop <= lastTitleBottom) {
+                 return
+            }
+
+            val paddingH = 10.dpToPx().toFloat()
+            val paddingV = 6.dpToPx().toFloat()
+            val corner = 10.dpToPx().toFloat()
+
+            val labelPaint = TextPaint(ChapterProvider.contentPaint).apply {
+                color = ReadBookConfig.textColor
+                textSize = ChapterProvider.contentPaint.textSize * 0.9f
+                isAntiAlias = AppConfig.useAntiAlias
+            }
+            val summaryPaint = TextPaint(ChapterProvider.contentPaint).apply {
+                color = ReadBookConfig.textColor
+                isAntiAlias = AppConfig.useAntiAlias
+            }
+
+            val labelFm = labelPaint.fontMetrics
+            val summaryFm = summaryPaint.fontMetrics
+            val labelHeight = labelFm.descent - labelFm.ascent
+            val summaryHeight = summaryFm.descent - summaryFm.ascent
+            val gap = 4.dpToPx().toFloat()
+
+            val blockHeight = paddingV + labelHeight + gap + summaryHeight + paddingV
+
+            // Calculate available height. If no text, we can use the block height or remaining page height.
+            val availableHeight = if (firstNonTitleTop != null) {
+                firstNonTitleTop - lastTitleBottom
+            } else {
+                blockHeight + 100f // Assume enough space
+            }
+
+            if (availableHeight < labelHeight + paddingV * 2) {
+                return
+            }
+
+            val startY = lastTitleBottom + ((availableHeight - blockHeight).coerceAtLeast(0f) / 2f)
+
+            val baseX = when {
+                ChapterProvider.doublePage -> {
+                    val refLine = lines.firstOrNull { !it.isTitle } ?: lines.first()
+                    if (refLine.isLeftLine) {
+                        ChapterProvider.paddingLeft
+                    } else {
+                        ChapterProvider.viewWidth / 2 + ChapterProvider.paddingLeft
+                    }
+                }
+
+                else -> ChapterProvider.paddingLeft
+            }.toFloat()
+            val left = baseX
+            val right = baseX + ChapterProvider.visibleWidth
+            val top = relativeOffset + startY
+            val bottom = top + min(blockHeight, availableHeight)
+
+            val bgPaint = Paint().apply {
+                isAntiAlias = AppConfig.useAntiAlias
+                color = ReadBookConfig.textColor
+                alpha = 26
+                style = Paint.Style.FILL
+            }
+
+            canvas.save()
+            canvas.translate(0f, relativeOffset)
+            val rect = RectF(left, startY, right, startY + min(blockHeight, availableHeight))
+            canvas.drawRoundRect(rect, corner, corner, bgPaint)
+            // ... rest of drawing code ...
+            val label = TextUtils.ellipsize(
+                block.riskLabel,
+                labelPaint,
+                rect.width() - paddingH * 2,
+                TextUtils.TruncateAt.END
+            ).toString()
+            val labelBaseY = rect.top + paddingV - labelFm.ascent
+            canvas.drawText(label, rect.left + paddingH, labelBaseY, labelPaint)
+
+            val summary = TextUtils.ellipsize(
+                block.summary.replace("\n", " ").trim(),
+                summaryPaint,
+                rect.width() - paddingH * 2,
+                TextUtils.TruncateAt.END
+            ).toString()
+            val summaryBaseY = labelBaseY + labelFm.descent + gap - summaryFm.ascent
+            if (summaryBaseY + summaryFm.descent <= rect.bottom - paddingV + 0.5f) {
+                canvas.drawText(summary, rect.left + paddingH, summaryBaseY, summaryPaint)
+            }
+
+            canvas.restore()
+            insightHitRect.set(left, top, right, bottom)
+        }
+
+        if (callBack.isScroll) {
+            val p0 = textPage
+            drawForPage(p0, relativeOffset(0))
+            if (insightHitRect.isEmpty && pageFactory.hasNext()) {
+                val p1 = relativePage(1)
+                drawForPage(p1, relativeOffset(1))
+            }
+            if (insightHitRect.isEmpty && pageFactory.hasNextPlus()) {
+                val p2 = relativePage(2)
+                drawForPage(p2, relativeOffset(2))
+            }
+        } else {
+            drawForPage(textPage, relativeOffset(0))
+        }
+    }
+
     private fun relativeOffset(relativePos: Int): Float {
         return when (relativePos) {
             0 -> pageOffset.toFloat()
@@ -711,6 +865,7 @@ class ContentTextView(context: Context, attrs: AttributeSet?) : View(context, at
         fun upSelectedStart(x: Float, y: Float, top: Float)
         fun upSelectedEnd(x: Float, y: Float)
         fun onImageLongPress(x: Float, y: Float, src: String)
+        fun onInsightClick()
         fun onCancelSelect()
         fun onLongScreenshotTouchEvent(event: MotionEvent): Boolean
     }

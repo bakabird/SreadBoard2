@@ -189,7 +189,7 @@ class MainViewModel(application: Application) : BaseViewModel(application) {
 
     fun postUpBooksLiveData(reset: Boolean = false) {
         if (AppConfig.showWaitUpCount) {
-            onUpBooksLiveData.postValue(waitUpTocBooks.size + onUpTocBooks.size)
+            onUpBooksLiveData.postValue(waitUpTocBooks.count() + onUpTocBooks.count())
         } else if (reset) {
             onUpBooksLiveData.postValue(0)
         }
@@ -216,7 +216,7 @@ class MainViewModel(application: Application) : BaseViewModel(application) {
             launch {
                 while (isActive && CacheBook.isRun) {
                     //有目录更新是不缓存,优先更新目录,现在更多网站限制并发
-                    CacheBook.setWorkingState(waitUpTocBooks.isEmpty() && onUpTocBooks.isEmpty())
+                    CacheBook.setWorkingState(waitUpTocBooks.none() && onUpTocBooks.none())
                     delay(1000)
                 }
             }

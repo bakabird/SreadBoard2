@@ -228,6 +228,11 @@ class TextChapterLayout(
             }
         }
 
+        val insightHeight = ChapterProvider.getInsightHeight(bookChapter.index)
+        if (insightHeight > 0) {
+            durY += insightHeight
+        }
+
         val sb = StringBuffer()
         var isSetTypedImage = false
         contents.forEach { content ->
