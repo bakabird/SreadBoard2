@@ -4,14 +4,18 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.content.res.Configuration
 import android.graphics.drawable.BitmapDrawable
+import android.graphics.Typeface
 import android.os.Build
 import android.os.Bundle
 import android.util.AttributeSet
+import android.view.KeyEvent
 import android.view.Menu
 import android.view.MenuItem
 import android.view.MotionEvent
 import android.view.View
 import android.widget.FrameLayout
+import android.widget.ScrollView
+import android.widget.TextView
 import androidx.activity.addCallback
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
@@ -19,20 +23,26 @@ import androidx.viewbinding.ViewBinding
 import io.legado.app.R
 import io.legado.app.constant.AppConst
 import io.legado.app.constant.AppLog
+import io.legado.app.constant.EventBus
 import io.legado.app.constant.Theme
 import io.legado.app.help.config.AppConfig
 import io.legado.app.help.config.ThemeConfig
+import io.legado.app.lib.dialogs.alert
 import io.legado.app.lib.theme.ThemeStore
 import io.legado.app.lib.theme.backgroundColor
 import io.legado.app.lib.theme.primaryColor
+import io.legado.app.model.ai.AIClient
+import io.legado.app.model.ai.AIRequestPreviewEvent
 import io.legado.app.ui.widget.TitleBar
 import io.legado.app.utils.ColorUtils
 import io.legado.app.utils.applyBackgroundTint
 import io.legado.app.utils.applyOpenTint
 import io.legado.app.utils.applyTint
 import io.legado.app.utils.disableAutoFill
+import io.legado.app.utils.dpToPx
 import io.legado.app.utils.fullScreen
 import io.legado.app.utils.hideSoftInput
+import io.legado.app.utils.observeEvent
 import io.legado.app.utils.setLightStatusBar
 import io.legado.app.utils.setNavigationBarColorAuto
 import io.legado.app.utils.setStatusBarColorAuto
@@ -49,6 +59,7 @@ abstract class BaseActivity<VB : ViewBinding>(
 ) : AppCompatActivity() {
 
     protected abstract val binding: VB
+    private var aiRequestPreviewDialog: androidx.appcompat.app.AlertDialog? = null
 
     val isInMultiWindow: Boolean
         @SuppressLint("ObsoleteSdkInt")
@@ -91,6 +102,7 @@ abstract class BaseActivity<VB : ViewBinding>(
         onBackPressedDispatcher.addCallback(this) {
             finish()
         }
+        observeAiRequestPreviewBus()
         observeLiveBus()
         onActivityCreated(savedInstanceState)
     }
@@ -198,6 +210,36 @@ abstract class BaseActivity<VB : ViewBinding>(
     }
 
     open fun observeLiveBus() {
+    }
+
+    private fun observeAiRequestPreviewBus() {
+        observeEvent<AIRequestPreviewEvent>(EventBus.AI_REQUEST_PREVIEW) { event ->
+            if (aiRequestPreviewDialog?.isShowing == true) return@observeEvent
+            val padding = 16.dpToPx()
+            val textView = TextView(this).apply {
+                text = event.message
+                setTextIsSelectable(true)
+                typeface = Typeface.MONOSPACE
+                setPadding(padding, padding, padding, padding)
+            }
+            val scrollView = ScrollView(this).apply {
+                addView(textView)
+            }
+            aiRequestPreviewDialog = alert(title = event.title) {
+                setCancelable(false)
+                customView { scrollView }
+                positiveButton("Continue") {
+                    AIClient.confirmRequestPreview(event.requestId)
+                }
+                onDismiss {
+                    aiRequestPreviewDialog = null
+                    AIClient.confirmRequestPreview(event.requestId)
+                }
+                onKeyPressed { _, keyCode, _ ->
+                    keyCode == KeyEvent.KEYCODE_BACK
+                }
+            }
+        }
     }
 
     override fun dispatchTouchEvent(ev: MotionEvent): Boolean {

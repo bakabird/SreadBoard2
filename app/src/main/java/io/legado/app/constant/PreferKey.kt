@@ -187,4 +187,5 @@ object PreferKey {
     const val contentSelectSpeakMod = "contentReadAloudMod"
     const val aiRuleSummary = "aiRuleSummary"
     const val aiRuleSkipRisk = "aiRuleSkipRisk"
+    const val aiInsightRequestPreview = "aiInsightRequestPreview"
 }

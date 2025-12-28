@@ -18,7 +18,9 @@ import io.legado.app.lib.dialogs.selector
 import io.legado.app.lib.theme.primaryColor
 import io.legado.app.ui.widget.recycler.VerticalDivider
 import io.legado.app.utils.applyTint
+import io.legado.app.utils.getPrefBoolean
 import io.legado.app.utils.getPrefString
+import io.legado.app.utils.putPrefBoolean
 import io.legado.app.utils.setEdgeEffectColor
 import io.legado.app.utils.toastOnUi
 import io.legado.app.utils.viewbindingdelegate.viewBinding
@@ -60,6 +62,11 @@ class AIConfigActivity : VMBaseActivity<ActivityAiConfigBinding, AIConfigViewMod
 
         binding.tvSkipRiskRule.setOnClickListener {
             showRuleSelector(false)
+        }
+
+        binding.swRequestPreview.isChecked = getPrefBoolean(PreferKey.aiInsightRequestPreview, false)
+        binding.swRequestPreview.setOnCheckedChangeListener { _, isChecked ->
+            putPrefBoolean(PreferKey.aiInsightRequestPreview, isChecked)
         }
     }
 

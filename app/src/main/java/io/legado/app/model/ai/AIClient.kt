@@ -2,31 +2,59 @@ package io.legado.app.model.ai
 
 import com.google.gson.Gson
 import com.google.gson.JsonObject
+import io.legado.app.constant.EventBus
+import io.legado.app.constant.PreferKey
 import io.legado.app.data.entities.AIRule
 import io.legado.app.help.http.okHttpClient
+import io.legado.app.utils.getPrefBoolean
+import io.legado.app.utils.postEvent
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.IOException
+import java.security.MessageDigest
+import java.util.UUID
+import java.util.concurrent.ConcurrentHashMap
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withTimeout
+import splitties.init.appCtx
+
+data class AIRequestPreviewEvent(
+    val requestId: String,
+    val title: String,
+    val message: String
+)
 
 object AIClient {
     private val gson = Gson()
     private val JSON = "application/json; charset=utf-8".toMediaType()
+    private val previewMutex = Mutex()
+    private val previewWaiters = ConcurrentHashMap<String, CompletableDeferred<Unit>>()
 
     suspend fun generate(rule: AIRule, messages: List<Map<String, String>>): String {
-        // Create a new client sharing the connection pool but with potential timeouts if needed, 
-        // though default okHttpClient has good timeouts.
         val client = okHttpClient
-        
+
+        val endpoint = rule.baseUrl.trimEnd('/') + "/v1/chat/completions"
         val payload = mapOf(
             "model" to rule.model,
             "messages" to messages
         )
-        
-        val requestBody = gson.toJson(payload).toRequestBody(JSON)
-        
+
+        val payloadJson = gson.toJson(payload)
+        awaitRequestPreviewIfEnabled(
+            endpoint = endpoint,
+            model = rule.model,
+            hasAuthHeader = rule.apiKey.isNotEmpty(),
+            payloadJson = payloadJson
+        )
+
+        val requestBody = payloadJson.toRequestBody(JSON)
+
         val requestBuilder = Request.Builder()
-            .url(rule.baseUrl.trimEnd('/') + "/v1/chat/completions") // Assuming OpenAI compatible
+            .url(endpoint)
             .post(requestBody)
 
         if (rule.apiKey.isNotEmpty()) {
@@ -35,26 +63,89 @@ object AIClient {
 
         val request = requestBuilder.build()
 
-        return try {
-            client.newCall(request).execute().use { response ->
-                if (!response.isSuccessful) {
-                    throw IOException("Unexpected code $response")
-                }
-                
-                val responseBody = response.body?.string() ?: throw IOException("Empty response")
-                val jsonObject = gson.fromJson(responseBody, JsonObject::class.java)
-                
-                val choices = jsonObject.getAsJsonArray("choices")
-                if (choices != null && choices.size() > 0) {
-                     choices.get(0).asJsonObject
-                        .getAsJsonObject("message")
-                        .get("content").asString
-                } else {
-                    throw IOException("Invalid response structure: No choices found")
-                }
+        return client.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) {
+                throw IOException("Unexpected code $response")
             }
-        } catch (e: Exception) {
-            throw e
+
+            val responseBody = response.body.string()
+            val jsonObject = gson.fromJson(responseBody, JsonObject::class.java)
+
+            val choices = jsonObject.getAsJsonArray("choices")
+            if (choices != null && choices.size() > 0) {
+                choices.get(0).asJsonObject
+                    .getAsJsonObject("message")
+                    .get("content").asString
+            } else {
+                throw IOException("Invalid response structure: No choices found")
+            }
+        }
+    }
+
+    fun confirmRequestPreview(requestId: String) {
+        previewWaiters.remove(requestId)?.complete(Unit)
+    }
+
+    private suspend fun awaitRequestPreviewIfEnabled(
+        endpoint: String,
+        model: String,
+        hasAuthHeader: Boolean,
+        payloadJson: String
+    ) {
+        if (!appCtx.getPrefBoolean(PreferKey.aiInsightRequestPreview, false)) return
+
+        previewMutex.withLock {
+            val requestId = UUID.randomUUID().toString()
+            val deferred = CompletableDeferred<Unit>()
+            previewWaiters[requestId] = deferred
+
+            val bodyBytes = payloadJson.toByteArray(Charsets.UTF_8).size
+            val bodySha256 = sha256Hex(payloadJson)
+            val maxChars = 40000
+            val displayBody = if (payloadJson.length <= maxChars) {
+                payloadJson
+            } else {
+                payloadJson.take(maxChars) + "\n... (truncated, total chars=${payloadJson.length})"
+            }
+
+            val message = buildString {
+                append("Endpoint: ").append(endpoint).append('\n')
+                append("Method: POST\n")
+                append("Content-Type: application/json\n")
+                append("Authorization: ").append(if (hasAuthHeader) "Bearer (set)" else "(none)").append('\n')
+                append("Model: ").append(model).append('\n')
+                append("Body bytes: ").append(bodyBytes).append('\n')
+                append("Body SHA-256: ").append(bodySha256).append('\n')
+                append('\n')
+                append(displayBody)
+            }
+
+            postEvent(
+                EventBus.AI_REQUEST_PREVIEW,
+                AIRequestPreviewEvent(
+                    requestId = requestId,
+                    title = "AI Insight Request Preview",
+                    message = message
+                )
+            )
+
+            try {
+                withTimeout(120_000) { deferred.await() }
+            } catch (_: TimeoutCancellationException) {
+            } finally {
+                previewWaiters.remove(requestId)
+            }
+        }
+    }
+
+    private fun sha256Hex(input: String): String {
+        val bytes = MessageDigest.getInstance("SHA-256")
+            .digest(input.toByteArray(Charsets.UTF_8))
+        return buildString(bytes.size * 2) {
+            for (b in bytes) {
+                append(((b.toInt() ushr 4) and 0xF).toString(16))
+                append((b.toInt() and 0xF).toString(16))
+            }
         }
     }
 }

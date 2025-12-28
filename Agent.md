@@ -41,7 +41,9 @@
 
 - Android Gradle Plugin in this repo requires a newer JDK; using Java 8 fails dependency resolution. Use Java 17 explicitly when running Gradle: `JAVA_HOME=$(/usr/libexec/java_home -v 17) ./gradlew ...`.
 - `:app:lintDebug` is ambiguous; use `:app:lintAppDebug` (or the specific `lintReportAppDebug`/`lintFixAppDebug` tasks) instead.
-- Lint may currently fail due to an existing manifest issue: `app/src/main/AndroidManifest.xml` references `androidx.startup.InitializationProvider` but the class is missing from dependencies.
+- If lint reports `MissingClass` for `androidx.startup.InitializationProvider`, add `androidx.startup:startup-runtime` to dependencies (version is managed in `gradle/libs.versions.toml`).
+- KSP can fail with `java.lang.OutOfMemoryError: Metaspace`; increase `org.gradle.jvmargs` MaxMetaspaceSize (see `gradle.properties`) and/or run Gradle with `--no-daemon` to apply JVM settings to a fresh process.
+- Unit tests: `./gradlew :app:testDebugUnitTest --no-daemon`.
 
 # Chapter Insights Notes
 
@@ -76,3 +78,8 @@
   - Uses `splitties.init.appCtx` for global Context access in non-Android components (e.g., `InsightManager`).
   - Uses `BookHelp.getContent` to retrieve chapter text.
   - `VMBaseActivity`: Base class for activities using ViewModel.
+- **Debug: Request Preview (non-cancelable)**:
+  - Setting toggle lives in `AIConfigActivity` and is persisted via `PreferKey.aiInsightRequestPreview`.
+  - When enabled, `AIClient.generate(...)` blocks before sending, posts an `EventBus.AI_REQUEST_PREVIEW` event, and waits until the user presses “Continue” on a global dialog.
+  - Dialog is attached from `BaseActivity` (all activities), uses a scrollable, selectable monospace text view, is not cancelable, and consumes Back.
+  - Preview content includes endpoint, headers (Authorization only shows whether set), model, and request body JSON (truncated if large) plus a SHA-256 checksum for verification.
