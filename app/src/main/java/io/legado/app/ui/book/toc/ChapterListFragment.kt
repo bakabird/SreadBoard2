@@ -93,11 +93,23 @@ class ChapterListFragment : VMBaseFragment<TocViewModel>(R.layout.fragment_chapt
     private fun initSkipRisks(book: Book) {
         lifecycleScope.launch(IO) {
             appDb.chapterInsightDao.flowByBook(book.bookUrl).collect { insights ->
+                val newSkipRiskLabels = HashMap<Int, Int>()
+                val newHasSummary = HashMap<Int, Boolean>()
+
                 insights.forEach { 
                     if (it.skipRiskLabel > 0) {
-                        adapter.skipRiskLabels[it.chapterIndex] = it.skipRiskLabel
+                        newSkipRiskLabels[it.chapterIndex] = it.skipRiskLabel
+                    }
+                    if (!it.summary.isNullOrEmpty()) {
+                        newHasSummary[it.chapterIndex] = true
                     }
                 }
+                
+                adapter.skipRiskLabels.clear()
+                adapter.skipRiskLabels.putAll(newSkipRiskLabels)
+                adapter.hasSummary.clear()
+                adapter.hasSummary.putAll(newHasSummary)
+                
                 withContext(Main) {
                     adapter.notifyItemRangeChanged(0, adapter.itemCount, true)
                 }

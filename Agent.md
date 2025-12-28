@@ -58,6 +58,7 @@
     - `AIConfigActivity`: Settings screen for managing rules and binding features (Summary/Skip Risk) to rules.
     - `InsightsBottomSheet`: Reader dialog showing summary and risk analysis.
     - `ChapterListAdapter`: Displays Skip Risk labels (e.g., "Filler", "Must Read") in the Table of Contents.
+    - `ContentTextView` & `ChapterProvider`: Renders the Insight Block (Skip Risk label + Summary) directly within the reader view.
 - **Task Queue**:
   - `InsightManager.tasks(): StateFlow<List<AITask>>` exposes currently running AI jobs for UI.
   - Queue key format: `${bookUrl}-${chapterIndex}-${feature}`; deduped via `ConcurrentHashMap.putIfAbsent`.
@@ -83,3 +84,17 @@
   - When enabled, `AIClient.generate(...)` blocks before sending, posts an `EventBus.AI_REQUEST_PREVIEW` event, and waits until the user presses “Continue” on a global dialog.
   - Dialog is attached from `BaseActivity` (all activities), uses a scrollable, selectable monospace text view, is not cancelable, and consumes Back.
   - Preview content includes endpoint, headers (Authorization only shows whether set), model, and request body JSON (truncated if large) plus a SHA-256 checksum for verification.
+
+# Reader Layout & Drawing Notes
+
+- **Architecture**:
+  - **Async Layout**: `ReadBook.loadContent` uses `TextChapterLayout.kt` (running in a background coroutine) to calculate page breaks and line positions. It does *not* use the synchronous `ChapterProvider.getTextChapter` in the main flow.
+  - **Space Reservation**: To reserve vertical space for custom blocks (like the Insight Block) at the top of a chapter, logic must be added to the layout loop in `TextChapterLayout.kt` (updating `durY`). Adding it only to `ChapterProvider` helper methods will be ignored by the async loader.
+  - **Drawing**: `ContentTextView.kt` handles the actual drawing on the `Canvas`. It iterates through `TextPage`s and `TextLine`s.
+- **Coordinate Systems**:
+  - `TextLine` positions (`lineTop`, `lineBottom`) are relative to the start of the `TextPage`.
+  - Drawing in `ContentTextView` often uses a `relativeOffset` (e.g., `pageOffset` for the current page) to translate page coordinates to view coordinates.
+  - **FontMetrics Gotcha**: `Paint.FontMetrics.ascent` is **negative** (distance above baseline). When manually calculating a Y-coordinate for text drawing:
+    - Baseline = `Top - Ascent` (since `Ascent` is negative, this adds the height).
+    - If you add `Height` (Descent - Ascent) to the Baseline, you get `Top - 2*Ascent + Descent`, pushing text way down.
+    - Correct vertical stacking: `NextBaseline = CurrentBaseline + FontMetrics.descent + Gap - NextFontMetrics.ascent`.

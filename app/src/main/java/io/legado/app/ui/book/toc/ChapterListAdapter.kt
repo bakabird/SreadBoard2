@@ -31,11 +31,17 @@ class ChapterListAdapter(context: Context, val callback: Callback) :
 
     val cacheFileNames = hashSetOf<String>()
     val skipRiskLabels = ConcurrentHashMap<Int, Int>() // Index -> Label
+    val hasSummary = ConcurrentHashMap<Int, Boolean>() // Index -> Has Summary
     private val displayTitleMap = ConcurrentHashMap<String, String>()
     private val handler = Handler(Looper.getMainLooper())
-    
+
     fun updateSkipRisk(index: Int, label: Int) {
         skipRiskLabels[index] = label
+        notifyItemChanged(index, true)
+    }
+
+    fun updateSummaryStatus(index: Int, has: Boolean) {
+        hasSummary[index] = has
         notifyItemChanged(index, true)
     }
 
@@ -173,6 +179,7 @@ class ChapterListAdapter(context: Context, val callback: Callback) :
                 }
 
                 val riskLabel = skipRiskLabels[item.index] ?: 0
+                val summaryExists = hasSummary[item.index] ?: false
                 if (riskLabel > 0) {
                     tvSkipRisk.visible()
                     tvSkipRisk.text = when(riskLabel) {
@@ -189,6 +196,10 @@ class ChapterListAdapter(context: Context, val callback: Callback) :
                         4 -> 0xFF008000.toInt()
                         else -> 0xFF888888.toInt()
                     })
+                } else if (summaryExists) {
+                    tvSkipRisk.visible()
+                    tvSkipRisk.text = "Summary"
+                    tvSkipRisk.setBackgroundColor(0xFF2196F3.toInt())
                 } else {
                     tvSkipRisk.gone()
                 }
@@ -196,8 +207,9 @@ class ChapterListAdapter(context: Context, val callback: Callback) :
                 upHasCache(binding, isDur, cached)
             } else {
                 tvChapterName.text = getDisplayTitle(item)
-                
+
                 val riskLabel = skipRiskLabels[item.index] ?: 0
+                val summaryExists = hasSummary[item.index] ?: false
                 if (riskLabel > 0) {
                     tvSkipRisk.visible()
                     tvSkipRisk.text = when(riskLabel) {
@@ -214,10 +226,14 @@ class ChapterListAdapter(context: Context, val callback: Callback) :
                         4 -> 0xFF008000.toInt()
                         else -> 0xFF888888.toInt()
                     })
+                } else if (summaryExists) {
+                    tvSkipRisk.visible()
+                    tvSkipRisk.text = "Summary"
+                    tvSkipRisk.setBackgroundColor(0xFF2196F3.toInt())
                 } else {
                     tvSkipRisk.gone()
                 }
-                
+
                 upHasCache(binding, isDur, cached)
             }
         }

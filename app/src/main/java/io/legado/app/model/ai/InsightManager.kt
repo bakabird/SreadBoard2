@@ -46,18 +46,18 @@ object InsightManager {
     fun getSummaryRuleId(): Long? = appCtx.getPrefString(PreferKey.aiRuleSummary)?.toLongOrNull()
     fun getSkipRiskRuleId(): Long? = appCtx.getPrefString(PreferKey.aiRuleSkipRisk)?.toLongOrNull()
 
-    fun generateSummary(book: Book, chapter: BookChapter, force: Boolean = false) {
-        val ruleId = getSummaryRuleId() ?: return
-        val rule = appDb.aiRuleDao.get(ruleId) ?: return
+    fun generateSummary(book: Book, chapter: BookChapter, force: Boolean = false): Job? {
+        val ruleId = getSummaryRuleId() ?: return null
+        val rule = appDb.aiRuleDao.get(ruleId) ?: return null
 
         val jobKey = "${book.bookUrl}-${chapter.index}-$FEATURE_SUMMARY"
         if (!force) {
             val existingInsight = appDb.chapterInsightDao.get(book.bookUrl, chapter.index)
             if (!existingInsight?.summary.isNullOrBlank()) {
-                return
+                return null
             }
             if (existingInsight?.status == STATUS_FAILED) {
-                return
+                return null
             }
         }
         val task = AITask(
@@ -106,9 +106,6 @@ object InsightManager {
 
                 appDb.chapterInsightDao.insert(insight)
 
-                // Trigger Skip Risk checks for surrounding chapters
-                checkAndTriggerSkipRisk(book, chapter.index)
-
             } catch (e: CancellationException) {
                 updateStatus(book.bookUrl, chapter.index, STATUS_NONE)
                 throw e
@@ -123,10 +120,11 @@ object InsightManager {
         val existing = queue.putIfAbsent(jobKey, TaskEntry(task, job))
         if (existing != null) {
             job.cancel()
-            return
+            return existing.job
         }
         updateTasksFlow()
         job.start()
+        return job
     }
 
     fun generateSkipRisk(book: Book, chapterIndex: Int, force: Boolean = false) {
@@ -164,11 +162,16 @@ object InsightManager {
                  // Prior Summaries
                  for (i in (chapterIndex - 3) until chapterIndex) {
                      if (chapterMap.containsKey(i)) {
-                         val summary = insights[i]?.summary
+                         var summary = insights[i]?.summary
                          if (summary == null) {
                              val ch = chapterMap[i]!!
-                             generateSummary(book, ch)
-                             return@launch // Stop and wait for summary to trigger this again
+                             val summaryJob = generateSummary(book, ch)
+                             summaryJob?.join()
+                             summary = appDb.chapterInsightDao.get(book.bookUrl, i)?.summary
+                             if (summary == null) {
+                                 // Summary generation failed or was skipped
+                                 return@launch
+                             }
                          }
                          contextBuilder.append("Chapter $i Summary: $summary\n\n")
                      }
@@ -181,11 +184,15 @@ object InsightManager {
                  // Future Summaries
                  for (i in (chapterIndex + 1) .. (chapterIndex + 3)) {
                      if (chapterMap.containsKey(i)) {
-                         val summary = insights[i]?.summary
+                         var summary = insights[i]?.summary
                          if (summary == null) {
                              val ch = chapterMap[i]!!
-                             generateSummary(book, ch)
-                             return@launch
+                             val summaryJob = generateSummary(book, ch)
+                             summaryJob?.join()
+                             summary = appDb.chapterInsightDao.get(book.bookUrl, i)?.summary
+                             if (summary == null) {
+                                 return@launch
+                             }
                          }
                          contextBuilder.append("Chapter $i Summary: $summary\n\n")
                      }
@@ -250,11 +257,6 @@ object InsightManager {
          job.start()
     }
 
-    fun checkAndTriggerSkipRisk(book: Book, chapterIndex: Int) {
-         for (i in (chapterIndex - 3) .. (chapterIndex + 3)) {
-             generateSkipRisk(book, i)
-         }
-    }
 
     private fun updateStatus(bookUrl: String, chapterIndex: Int, status: Int) {
         val insight = appDb.chapterInsightDao.get(bookUrl, chapterIndex)
