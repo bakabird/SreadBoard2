@@ -57,7 +57,10 @@
   - **UI**:
     - `AIConfigActivity`: Settings screen for managing rules and binding features (Summary/Skip Risk) to rules.
     - `InsightsBottomSheet`: Reader dialog showing summary and risk analysis.
-    - `ChapterListAdapter`: Displays Skip Risk labels (e.g., "Filler", "Must Read") in the Table of Contents.
+    - `ChapterListAdapter`: Displays Skip Risk labels (e.g., "Filler", "Must Read") or a "Summary" tag in the Table of Contents.
+      - **Priority**: Skip Risk (high) > Summary (low).
+      - **Visuals**: Skip Risk uses status colors; Summary uses fixed Blue (`0xFF2196F3`).
+      - **State**: Managed via `skipRiskLabels` and `hasSummary` (ConcurrentHashMap) populated from `ChapterListFragment`.
     - `ContentTextView` & `ChapterProvider`: Renders the Insight Block (Skip Risk label + Summary) directly within the reader view.
 - **Task Queue**:
   - `InsightManager.tasks(): StateFlow<List<AITask>>` exposes currently running AI jobs for UI.
@@ -67,6 +70,11 @@
     - `AIConfigActivity` toolbar menu: “AI Task Queue”.
     - `InsightsBottomSheet` action: “Task Queue”.
   - Dialog: `io.legado.app.ui.config.AITaskQueueDialog` shows the live queue and provides “Abandon all tasks”.
+- **Reliability & Recovery**:
+  - **Parsing Resilience**: LLM outputs are often non-deterministic. Parsers must handle cases where the model returns a raw number (e.g., "4") instead of the requested label ("Must Read"). Fallback logic (`startsWith`, `contains`) is essential.
+  - **Dependency Recovery**: Skip Risk depends on surrounding summaries. If a summary is missing (e.g., due to a prior failure), `InsightManager.ensureSummary()` attempts a one-time automatic recovery (delete failed record -> force regenerate) before aborting the dependent task.
+  - **User Notifications**: API errors (4xx, 5xx, Network) are captured in `InsightManager`, logged via `DebugLog` (dev-only), and broadcast via `EventBus.AI_ERROR`. `ReadBookActivity` observes these and displays a `longSnackbar` (red background) with an actionable "Retry" button.
+  - **Logging**: Use `DebugLog` for verbose logic traces (avoids production log spam) and `LogUtils` for critical info.
 - **Skip Enqueue / Retry**:
   - `InsightManager.generateSummary(..., force = false)` returns early if `ChapterInsight.summary` already exists, and also skips re-enqueue when status is `STATUS_FAILED`.
   - `InsightManager.generateSkipRisk(..., force = false)` returns early if `ChapterInsight.skipRiskLabel > 0`.
@@ -75,6 +83,7 @@
   - Skip Risk label uses `TextView.backgroundTintList` with `@drawable/shape_radius_10dp`; the drawable must have an opaque `<solid>` (not transparent) for tinting to render correctly (otherwise it can appear as an unintended “white box”).
 - **Kotlin Source Gotcha**:
   - Avoid pasting Markdown (e.g., `![...](...)`) into Kotlin files; it can break the file at the import/top-of-file level and fail compilation.
+  - Extension functions (e.g., `longSnackbar`) must be explicitly imported even if they are top-level functions in a utility package.
 - **Dependencies & Utils**:
   - Uses `splitties.init.appCtx` for global Context access in non-Android components (e.g., `InsightManager`).
   - Uses `BookHelp.getContent` to retrieve chapter text.

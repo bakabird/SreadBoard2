@@ -28,6 +28,20 @@ data class AIRequestPreviewEvent(
     val message: String
 )
 
+class AIException(message: String, val code: Int) : IOException(message)
+
+enum class AIErrorType {
+    CLIENT, SERVER, NETWORK, UNKNOWN
+}
+
+data class AIErrorEvent(
+    val title: String,
+    val message: String,
+    val type: AIErrorType,
+    val actionLabel: String? = null,
+    val onAction: (() -> Unit)? = null
+)
+
 object AIClient {
     private val gson = Gson()
     private val JSON = "application/json; charset=utf-8".toMediaType()
@@ -65,7 +79,9 @@ object AIClient {
 
         return client.newCall(request).execute().use { response ->
             if (!response.isSuccessful) {
-                throw IOException("Unexpected code $response")
+                val errorBody = response.body?.string() ?: ""
+                val msg = if (errorBody.isNotBlank()) "Error ${response.code}: $errorBody" else "Error ${response.code}: ${response.message}"
+                throw AIException(msg, response.code)
             }
 
             val responseBody = response.body.string()

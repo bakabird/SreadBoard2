@@ -163,6 +163,15 @@ If an Insights run is interrupted (process kill, backgrounding, network drop, OS
 * previously generated summaries / skip-risk labels may be reused
 * when the user triggers Insights again for a specific chapter, restart orchestration **only for that chapter** (unrelated to the previously interrupted run)
 
+### Automatic Recovery for Context Dependencies
+
+If a required surrounding summary (N-3..N-1 or N+1..N+3) fails to generate (e.g., network error, model refusal):
+
+1.  **Automatic Retry**: The system must automatically attempt to recover **once** per dependency.
+2.  **Cleanup**: Before retrying, the failed/invalid summary record for that specific chapter must be cleared/deleted to ensure a fresh attempt.
+3.  **Persistence**: The retry attempt must use the standard generation flow (potentially with `force=true`).
+4.  **Failure Propagation**: If the retry also fails, the parent "Skip Risk" task should abort and report failure, ensuring data consistency (no partial/corrupted context used).
+
 ---
 
 ## 6) UI/UX

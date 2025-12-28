@@ -35,4 +35,5 @@ object EventBus {
     const val UP_MANGA_CONFIG = "upMangaConfig"
     const val PLAY_MODE_CHANGED = "playModeChanged"
     const val AI_REQUEST_PREVIEW = "aiRequestPreview"
+    const val AI_ERROR = "aiError"
 }

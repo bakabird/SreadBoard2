@@ -131,7 +131,10 @@ import io.legado.app.utils.startActivityForBook
 import io.legado.app.utils.sysScreenOffTime
 import io.legado.app.utils.throttle
 import io.legado.app.utils.toastOnUi
+import io.legado.app.utils.longSnackbar
 import io.legado.app.utils.visible
+import io.legado.app.model.ai.AIErrorEvent
+import io.legado.app.model.ai.AIErrorType
 import kotlinx.coroutines.Dispatchers.IO
 import kotlinx.coroutines.Dispatchers.Main
 import kotlinx.coroutines.Job
@@ -1793,6 +1796,32 @@ class ReadBookActivity : BaseReadBookActivity(),
         }
         observeEvent<Boolean>(EventBus.UP_SEEK_BAR) {
             readMenu.upSeekBar()
+        }
+        observeEvent<AIErrorEvent>(EventBus.AI_ERROR) { event ->
+            val message = "${event.title}: ${event.message}"
+            val actionLabel = event.actionLabel
+            val onAction = event.onAction
+
+            // Explicitly cast to View to avoid ambiguity if needed, though binding.root is already a View
+            val view = binding.root
+
+            val snackbar = if (!actionLabel.isNullOrBlank() && onAction != null) {
+                // Pass the lambda directly to the action parameter of longSnackbar
+                // The issue was likely unresolved reference due to type mismatch or ambiguity
+                // Ensure actionLabel is CharSequence and onAction is (View) -> Unit
+                view.longSnackbar(message, actionLabel) {
+                    onAction.invoke()
+                }
+            } else {
+                view.longSnackbar(message)
+            }
+
+            // Error Styling (Red background, White text)
+            if (event.type == AIErrorType.SERVER || event.type == AIErrorType.CLIENT || event.type == AIErrorType.NETWORK) {
+                snackbar.view.setBackgroundColor(0xFFB00020.toInt())
+                snackbar.setTextColor(0xFFFFFFFF.toInt())
+                snackbar.setActionTextColor(0xFFFFFFFF.toInt())
+            }
         }
     }
 
