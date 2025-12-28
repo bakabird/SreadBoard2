@@ -42,3 +42,37 @@
 - Android Gradle Plugin in this repo requires a newer JDK; using Java 8 fails dependency resolution. Use Java 17 explicitly when running Gradle: `JAVA_HOME=$(/usr/libexec/java_home -v 17) ./gradlew ...`.
 - `:app:lintDebug` is ambiguous; use `:app:lintAppDebug` (or the specific `lintReportAppDebug`/`lintFixAppDebug` tasks) instead.
 - Lint may currently fail due to an existing manifest issue: `app/src/main/AndroidManifest.xml` references `androidx.startup.InitializationProvider` but the class is missing from dependencies.
+
+# Chapter Insights Notes
+
+- **Feature**: Provides AI-generated summaries and "Skip Risk" analysis for book chapters.
+- **Key Components**:
+  - **Manager**: `io.legado.app.model.ai.InsightManager` (Singleton). Handles generation queues using `CoroutineScope(Dispatchers.IO)` and `ConcurrentHashMap`. Orchestrates context retrieval (summaries of surrounding chapters + full text of current chapter).
+  - **Client**: `io.legado.app.model.ai.AIClient`. Handles OpenAI-compatible API requests using `OkHttp`.
+  - **Data Entities**:
+    - `AIRule`: Stores AI provider config (API Key, Base URL, Model).
+    - `ChapterInsight`: Stores generated `summary`, `skipRiskLabel` (1-4), and status.
+  - **UI**:
+    - `AIConfigActivity`: Settings screen for managing rules and binding features (Summary/Skip Risk) to rules.
+    - `InsightsBottomSheet`: Reader dialog showing summary and risk analysis.
+    - `ChapterListAdapter`: Displays Skip Risk labels (e.g., "Filler", "Must Read") in the Table of Contents.
+- **Task Queue**:
+  - `InsightManager.tasks(): StateFlow<List<AITask>>` exposes currently running AI jobs for UI.
+  - Queue key format: `${bookUrl}-${chapterIndex}-${feature}`; deduped via `ConcurrentHashMap.putIfAbsent`.
+  - Global cancel: `InsightManager.cancelAll()` cancels jobs, clears queue, and resets summary status to `STATUS_NONE` (so the UI doesn’t remain stuck in “generating”).
+  - UI entry points:
+    - `AIConfigActivity` toolbar menu: “AI Task Queue”.
+    - `InsightsBottomSheet` action: “Task Queue”.
+  - Dialog: `io.legado.app.ui.config.AITaskQueueDialog` shows the live queue and provides “Abandon all tasks”.
+- **Skip Enqueue / Retry**:
+  - `InsightManager.generateSummary(..., force = false)` returns early if `ChapterInsight.summary` already exists, and also skips re-enqueue when status is `STATUS_FAILED`.
+  - `InsightManager.generateSkipRisk(..., force = false)` returns early if `ChapterInsight.skipRiskLabel > 0`.
+  - Retry buttons call the same functions with `force = true` to bypass the early-return guard.
+- **UI Tint Gotcha**:
+  - Skip Risk label uses `TextView.backgroundTintList` with `@drawable/shape_radius_10dp`; the drawable must have an opaque `<solid>` (not transparent) for tinting to render correctly (otherwise it can appear as an unintended “white box”).
+- **Kotlin Source Gotcha**:
+  - Avoid pasting Markdown (e.g., `![...](...)`) into Kotlin files; it can break the file at the import/top-of-file level and fail compilation.
+- **Dependencies & Utils**:
+  - Uses `splitties.init.appCtx` for global Context access in non-Android components (e.g., `InsightManager`).
+  - Uses `BookHelp.getContent` to retrieve chapter text.
+  - `VMBaseActivity`: Base class for activities using ViewModel.

@@ -754,5 +754,6 @@ class ReadView(context: Context, attrs: AttributeSet) :
         fun openSearchActivity(searchWord: String?)
         fun upSystemUiVisibility()
         fun sureNewProgress(progress: BookProgress)
+        fun showInsights()
     }
 }

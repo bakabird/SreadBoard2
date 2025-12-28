@@ -190,6 +190,10 @@
             android:configChanges="locale|keyboardHidden|orientation|screenSize|smallestScreenSize|screenLayout"
             android:launchMode="singleTask"
             android:windowSoftInputMode="adjustResize|stateHidden" />
+        <!-- AI 配置界面 -->
+        <activity
+            android:name=".ui.config.AIConfigActivity"
+            android:launchMode="standard" />
         <!-- 配置界面 -->
         <activity
             android:name=".ui.config.ConfigActivity"

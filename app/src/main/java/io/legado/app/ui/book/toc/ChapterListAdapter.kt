@@ -8,6 +8,7 @@ import androidx.recyclerview.widget.DiffUtil
 import io.legado.app.R
 import io.legado.app.base.adapter.DiffRecyclerAdapter
 import io.legado.app.base.adapter.ItemViewHolder
+import io.legado.app.data.appDb
 import io.legado.app.data.entities.Book
 import io.legado.app.data.entities.BookChapter
 import io.legado.app.databinding.ItemChapterListBinding
@@ -29,8 +30,14 @@ class ChapterListAdapter(context: Context, val callback: Callback) :
     DiffRecyclerAdapter<BookChapter, ItemChapterListBinding>(context) {
 
     val cacheFileNames = hashSetOf<String>()
+    val skipRiskLabels = ConcurrentHashMap<Int, Int>() // Index -> Label
     private val displayTitleMap = ConcurrentHashMap<String, String>()
     private val handler = Handler(Looper.getMainLooper())
+    
+    fun updateSkipRisk(index: Int, label: Int) {
+        skipRiskLabels[index] = label
+        notifyItemChanged(index, true)
+    }
 
     override val diffItemCallback: DiffUtil.ItemCallback<BookChapter>
         get() = object : DiffUtil.ItemCallback<BookChapter>() {
@@ -165,9 +172,52 @@ class ChapterListAdapter(context: Context, val callback: Callback) :
                     ivLocked.gone()
                 }
 
+                val riskLabel = skipRiskLabels[item.index] ?: 0
+                if (riskLabel > 0) {
+                    tvSkipRisk.visible()
+                    tvSkipRisk.text = when(riskLabel) {
+                        1 -> "Filler"
+                        2 -> "Low Value"
+                        3 -> "Caution"
+                        4 -> "Must Read"
+                        else -> ""
+                    }
+                    tvSkipRisk.setBackgroundColor(when(riskLabel) {
+                        1 -> 0xFF888888.toInt()
+                        2 -> 0xFFFFA500.toInt()
+                        3 -> 0xFFFF4500.toInt()
+                        4 -> 0xFF008000.toInt()
+                        else -> 0xFF888888.toInt()
+                    })
+                } else {
+                    tvSkipRisk.gone()
+                }
+
                 upHasCache(binding, isDur, cached)
             } else {
                 tvChapterName.text = getDisplayTitle(item)
+                
+                val riskLabel = skipRiskLabels[item.index] ?: 0
+                if (riskLabel > 0) {
+                    tvSkipRisk.visible()
+                    tvSkipRisk.text = when(riskLabel) {
+                        1 -> "Filler"
+                        2 -> "Low Value"
+                        3 -> "Caution"
+                        4 -> "Must Read"
+                        else -> ""
+                    }
+                    tvSkipRisk.setBackgroundColor(when(riskLabel) {
+                        1 -> 0xFF888888.toInt()
+                        2 -> 0xFFFFA500.toInt()
+                        3 -> 0xFFFF4500.toInt()
+                        4 -> 0xFF008000.toInt()
+                        else -> 0xFF888888.toInt()
+                    })
+                } else {
+                    tvSkipRisk.gone()
+                }
+                
                 upHasCache(binding, isDur, cached)
             }
         }

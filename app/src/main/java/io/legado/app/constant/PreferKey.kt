@@ -185,4 +185,6 @@ object PreferKey {
     const val showReadTitleAddition = "showReadTitleAddition"
     const val readBarStyleFollowPage = "readBarStyleFollowPage"
     const val contentSelectSpeakMod = "contentReadAloudMod"
+    const val aiRuleSummary = "aiRuleSummary"
+    const val aiRuleSkipRisk = "aiRuleSkipRisk"
 }

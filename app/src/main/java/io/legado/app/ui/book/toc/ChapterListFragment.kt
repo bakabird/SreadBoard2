@@ -86,6 +86,22 @@ class ChapterListFragment : VMBaseFragment<TocViewModel>(R.layout.fragment_chapt
             binding.tvCurrentChapterInfo.text =
                 "${book.durChapterTitle}(${book.durChapterIndex + 1}/${book.simulatedTotalChapterNum()})"
             initCacheFileNames(book)
+            initSkipRisks(book)
+        }
+    }
+    
+    private fun initSkipRisks(book: Book) {
+        lifecycleScope.launch(IO) {
+            appDb.chapterInsightDao.flowByBook(book.bookUrl).collect { insights ->
+                insights.forEach { 
+                    if (it.skipRiskLabel > 0) {
+                        adapter.skipRiskLabels[it.chapterIndex] = it.skipRiskLabel
+                    }
+                }
+                withContext(Main) {
+                    adapter.notifyItemRangeChanged(0, adapter.itemCount, true)
+                }
+            }
         }
     }
 

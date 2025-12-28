@@ -71,8 +71,13 @@ import io.legado.app.ui.about.AppLogDialog
 import io.legado.app.ui.book.bookmark.BookmarkDialog
 import io.legado.app.ui.book.changesource.ChangeBookSourceDialog
 import io.legado.app.ui.book.changesource.ChangeChapterSourceDialog
+import io.legado.app.data.appDb
 import io.legado.app.ui.book.info.BookInfoActivity
+import io.legado.app.ui.book.insights.InsightsBottomSheet
 import io.legado.app.ui.book.read.config.AutoReadDialog
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import io.legado.app.ui.book.read.config.BgTextConfigDialog.Companion.BG_COLOR
 import io.legado.app.ui.book.read.config.BgTextConfigDialog.Companion.TEXT_COLOR
 import io.legado.app.ui.book.read.config.MoreConfigDialog
@@ -153,7 +158,8 @@ class ReadBookActivity : BaseReadBookActivity(),
     AutoReadDialog.CallBack,
     TxtTocRuleDialog.CallBack,
     ColorPickerDialogListener,
-    LayoutProgressListener {
+    LayoutProgressListener,
+    InsightsBottomSheet.Callback {
 
     private val tocActivity =
         registerForActivityResult(TocActivityResult()) {
@@ -1217,6 +1223,25 @@ class ReadBookActivity : BaseReadBookActivity(),
 
     override fun showSearchSetting() {
         showDialogFragment<MoreConfigDialog>()
+    }
+
+    override fun showInsights() {
+        ReadBook.book?.let { book ->
+            lifecycleScope.launch {
+                val chapter = withContext(Dispatchers.IO) {
+                    appDb.bookChapterDao.getChapter(book.bookUrl, ReadBook.durChapterIndex)
+                }
+                if (chapter != null) {
+                    showDialogFragment(InsightsBottomSheet(book, chapter))
+                } else {
+                    toastOnUi("Chapter not found")
+                }
+            }
+        }
+    }
+
+    override fun onSkipChapter(currentIndex: Int) {
+        ReadBook.openChapter(currentIndex + 1)
     }
 
     /**

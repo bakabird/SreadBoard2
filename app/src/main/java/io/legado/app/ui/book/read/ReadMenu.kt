@@ -454,6 +454,17 @@ class ReadMenu @JvmOverloads constructor(
             AppConfig.isNightTheme = !AppConfig.isNightTheme
             ThemeConfig.applyDayNight(context)
         }
+        
+        // Insights
+        binding.fabInsights.setOnClickListener {
+            runMenuOut {
+                callBack.showInsights()
+            }
+        }
+        
+        // Insights Color Filter
+        binding.fabInsights.backgroundTintList = bottomBackgroundList
+        binding.fabInsights.setColorFilter(textColor)
 
         //上一章
         tvPre.setOnClickListener { ReadBook.moveToPrevChapter(upContent = true, toLast = false) }
@@ -585,6 +596,7 @@ class ReadMenu @JvmOverloads constructor(
         fun skipToChapter(index: Int)
         fun onMenuShow()
         fun onMenuHide()
+        fun showInsights()
     }
 
 }
