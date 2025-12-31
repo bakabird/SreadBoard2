@@ -89,9 +89,13 @@ object AIClient {
 
             val choices = jsonObject.getAsJsonArray("choices")
             if (choices != null && choices.size() > 0) {
-                choices.get(0).asJsonObject
-                    .getAsJsonObject("message")
-                    .get("content").asString
+                val message = choices.get(0).asJsonObject.getAsJsonObject("message")
+                val content = message?.get("content")
+                if (content != null && !content.isJsonNull) {
+                    content.asString
+                } else {
+                    ""
+                }
             } else {
                 throw IOException("Invalid response structure: No choices found")
             }

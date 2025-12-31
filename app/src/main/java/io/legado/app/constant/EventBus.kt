@@ -36,4 +36,5 @@ object EventBus {
     const val PLAY_MODE_CHANGED = "playModeChanged"
     const val AI_REQUEST_PREVIEW = "aiRequestPreview"
     const val AI_ERROR = "aiError"
+    const val INSIGHT_UPDATED = "insightUpdated"
 }

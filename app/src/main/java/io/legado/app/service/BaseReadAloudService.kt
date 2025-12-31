@@ -65,6 +65,10 @@ import splitties.systemservices.powerManager
 import splitties.systemservices.telephonyManager
 import splitties.systemservices.wifiManager
 
+import io.legado.app.utils.getPrefStringSet
+import io.legado.app.data.appDb
+import io.legado.app.data.entities.ChapterInsight
+
 /**
  * 朗读服务
  */
@@ -131,7 +135,9 @@ abstract class BaseReadAloudService : BaseService(),
     private var toLast = false
     var paragraphStartPos = 0
     var readAloudByPage = false
-        private set
+        protected set
+    private var waitingForInsight = false
+    protected var isReadingSummary = false
 
     private val broadcastReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
@@ -174,6 +180,17 @@ abstract class BaseReadAloudService : BaseService(),
             val pageIndex = it.getInt("pageIndex")
             val startPos = it.getInt("startPos")
             newReadAloud(play, pageIndex, startPos)
+        }
+        observeEvent<Int>(EventBus.INSIGHT_UPDATED) { updatedChapterIndex ->
+            if (waitingForInsight) {
+                val curChapterIndex = textChapter?.chapter?.index
+                if (curChapterIndex == updatedChapterIndex) {
+                    AppLog.put("Skip Risk/Summary generated, resuming...")
+                    waitingForInsight = false
+                    // Retry reading with the same parameters
+                    newReadAloud(true, pageIndex, paragraphStartPos)
+                }
+            }
         }
         observeSharedPreferences { _, key ->
             when (key) {
@@ -236,6 +253,51 @@ abstract class BaseReadAloudService : BaseService(),
             if (!textChapter.isCompleted) {
                 return@execute
             }
+
+            // Auto-Skip Check
+            isReadingSummary = false
+            val book = ReadBook.book
+            if (book != null && getPrefBoolean(PreferKey.readAloudAutoSkip)) {
+                val chapterIndex = textChapter.chapter.index
+                val insight = appDb.chapterInsightDao.get(book.bookUrl, chapterIndex)
+
+                if (insight == null || insight.skipRiskLabel == 0) {
+                    waitingForInsight = true
+                    launch(Main) {
+                        toastOnUi(R.string.waiting_for_skip_risk)
+                        pauseReadAloud(false)
+                    }
+                    return@execute
+                }
+
+                val skipConditions = getPrefStringSet(PreferKey.readAloudSkipConditions) ?: emptySet()
+                if (skipConditions.contains(insight.skipRiskLabel.toString())) {
+                    val summary = insight.summary
+                    if (summary.isNullOrBlank()) {
+                        waitingForInsight = true
+                        launch(Main) {
+                            toastOnUi(R.string.waiting_for_summary)
+                            pauseReadAloud(false)
+                        }
+                        return@execute
+                    }
+
+                    isReadingSummary = true
+                    launch(Main) {
+                        toastOnUi(R.string.auto_skip_reading_summary)
+                    }
+                    contentList = summary.split("\n").filter { it.isNotEmpty() }
+                    nowSpeak = 0
+                    readAloudNumber = 0
+                    paragraphStartPos = 0
+
+                    launch(Main) {
+                        if (play) play() else pageChanged = true
+                    }
+                    return@execute
+                }
+            }
+
             readAloudNumber = textChapter.getReadLength(pageIndex) + startPos
             readAloudByPage = getPrefBoolean(PreferKey.readAloudByPage)
             contentList = textChapter.getNeedReadAloud(0, readAloudByPage, 0)
@@ -333,20 +395,24 @@ abstract class BaseReadAloudService : BaseService(),
             playStop()
             do {
                 nowSpeak--
-                readAloudNumber -= contentList[nowSpeak].length + 1 + paragraphStartPos
+                if (!isReadingSummary) {
+                    readAloudNumber -= contentList[nowSpeak].length + 1 + paragraphStartPos
+                }
                 paragraphStartPos = 0
             } while (contentList[nowSpeak].matches(AppPattern.notReadAloudRegex))
-            textChapter?.let {
-                if (readAloudByPage) {
-                    val paragraphs = it.getParagraphs(true)
-                    if (!paragraphs[nowSpeak].isParagraphEnd) readAloudNumber++
+            if (!isReadingSummary) {
+                textChapter?.let {
+                    if (readAloudByPage) {
+                        val paragraphs = it.getParagraphs(true)
+                        if (!paragraphs[nowSpeak].isParagraphEnd) readAloudNumber++
+                    }
+                    if (readAloudNumber < it.getReadLength(pageIndex)) {
+                        pageIndex--
+                        ReadBook.moveToPrevPage()
+                    }
                 }
-                if (readAloudNumber < it.getReadLength(pageIndex)) {
-                    pageIndex--
-                    ReadBook.moveToPrevPage()
-                }
+                upTtsProgress(readAloudNumber + 1)
             }
-            upTtsProgress(readAloudNumber + 1)
             play()
         } else {
             toLast = true
@@ -357,22 +423,26 @@ abstract class BaseReadAloudService : BaseService(),
     private fun nextP() {
         if (nowSpeak < contentList.size - 1) {
             playStop()
-            readAloudNumber += contentList[nowSpeak].length.plus(1) - paragraphStartPos
+            if (!isReadingSummary) {
+                readAloudNumber += contentList[nowSpeak].length.plus(1) - paragraphStartPos
+            }
             paragraphStartPos = 0
             nowSpeak++
-            textChapter?.let {
-                if (readAloudByPage) {
-                    val paragraphs = it.getParagraphs(true)
-                    if (!paragraphs[nowSpeak].isParagraphEnd) readAloudNumber--
+            if (!isReadingSummary) {
+                textChapter?.let {
+                    if (readAloudByPage) {
+                        val paragraphs = it.getParagraphs(true)
+                        if (!paragraphs[nowSpeak].isParagraphEnd) readAloudNumber--
+                    }
+                    if (pageIndex + 1 < it.pageSize
+                        && readAloudNumber >= it.getReadLength(pageIndex + 1)
+                    ) {
+                        pageIndex++
+                        ReadBook.moveToNextPage()
+                    }
                 }
-                if (pageIndex + 1 < it.pageSize
-                    && readAloudNumber >= it.getReadLength(pageIndex + 1)
-                ) {
-                    pageIndex++
-                    ReadBook.moveToNextPage()
-                }
+                upTtsProgress(readAloudNumber + 1)
             }
-            upTtsProgress(readAloudNumber + 1)
             play()
         } else {
             nextChapter()

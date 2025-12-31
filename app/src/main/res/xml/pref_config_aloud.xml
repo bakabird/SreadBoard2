@@ -67,6 +67,21 @@
             android:key="sysTtsConfig"
             app:iconSpaceReserved="false" />
 
+        <io.legado.app.lib.prefs.SwitchPreference
+            android:defaultValue="false"
+            android:key="readAloudAutoSkip"
+            android:summary="@string/read_aloud_auto_skip_summary"
+            android:title="@string/read_aloud_auto_skip"
+            app:iconSpaceReserved="false" />
+
+        <io.legado.app.lib.prefs.MultiSelectListPreference
+            android:dependency="readAloudAutoSkip"
+            android:key="readAloudSkipConditions"
+            android:title="@string/read_aloud_skip_conditions"
+            android:entries="@array/read_aloud_skip_conditions_entries"
+            android:entryValues="@array/read_aloud_skip_conditions_values"
+            app:iconSpaceReserved="false" />
+
     </io.legado.app.lib.prefs.PreferenceCategory>
 
 </androidx.preference.PreferenceScreen>

@@ -1072,6 +1072,15 @@
     <string name="web_service_wake_lock_summary">The wake-up lock is enabled when the web service is enabled, and some phones will be killed when the wake-up lock is enabled.</string>
     <string name="read_aloud_wake_lock">Read aloud service wake-up lock</string>
     <string name="read_aloud_wake_lock_summary">The wake-up lock is enabled when reading aloud is enabled, and the wake-up lock on some mobile phones will be killed in the background.</string>
+    <string name="read_aloud_auto_skip">Auto-Skip (Beta)</string>
+    <string name="read_aloud_auto_skip_summary">Skip chapters based on AI insights (Skip Risk)</string>
+    <string name="read_aloud_skip_conditions">Skip Conditions</string>
+    <string name="read_aloud_skip_filler">Filler</string>
+    <string name="read_aloud_skip_low_value">Low Value</string>
+    <string name="read_aloud_skip_caution">Skip with Caution</string>
+    <string name="waiting_for_skip_risk">Waiting for AI skip risk analysis...</string>
+    <string name="waiting_for_summary">Waiting for chapter summary...</string>
+    <string name="auto_skip_reading_summary">Skipping chapter based on AI Insight, reading summary instead.</string>
     <string name="audio_play_wake_lock">Audio service wake-up lock</string>
     <string name="audio_play_wake_lock_summary">The wake-up lock is enabled when playing audio, and some phones will be killed when the wake-up lock is turned on.</string>
     <string name="change_search_scope">Toggle search scope</string>

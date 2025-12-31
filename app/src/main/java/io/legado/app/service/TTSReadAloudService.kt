@@ -195,13 +195,15 @@ class TTSReadAloudService : BaseReadAloudService(), TextToSpeech.OnInitListener 
                 if (contentList[nowSpeak].matches(AppPattern.notReadAloudRegex)) {
                     nextParagraph()
                 }
-                if (pageIndex + 1 < it.pageSize
-                    && readAloudNumber + 1 > it.getReadLength(pageIndex + 1)
-                ) {
-                    pageIndex++
-                    ReadBook.moveToNextPage()
+                if (!isReadingSummary) {
+                    if (pageIndex + 1 < it.pageSize
+                        && readAloudNumber + 1 > it.getReadLength(pageIndex + 1)
+                    ) {
+                        pageIndex++
+                        ReadBook.moveToNextPage()
+                    }
+                    upTtsProgress(readAloudNumber + 1)
                 }
-                upTtsProgress(readAloudNumber + 1)
             }
         }
 
@@ -215,13 +217,15 @@ class TTSReadAloudService : BaseReadAloudService(), TextToSpeech.OnInitListener 
             val msg =
                 "onRangeStart nowSpeak:$nowSpeak pageIndex:$pageIndex utteranceId:$utteranceId start:$start end:$end frame:$frame"
             LogUtils.d(TAG, msg)
-            textChapter?.let {
-                if (pageIndex + 1 < it.pageSize
-                    && readAloudNumber + start > it.getReadLength(pageIndex + 1)
-                ) {
-                    pageIndex++
-                    ReadBook.moveToNextPage()
-                    upTtsProgress(readAloudNumber + start)
+            if (!isReadingSummary) {
+                textChapter?.let {
+                    if (pageIndex + 1 < it.pageSize
+                        && readAloudNumber + start > it.getReadLength(pageIndex + 1)
+                    ) {
+                        pageIndex++
+                        ReadBook.moveToNextPage()
+                        upTtsProgress(readAloudNumber + start)
+                    }
                 }
             }
         }
@@ -237,7 +241,9 @@ class TTSReadAloudService : BaseReadAloudService(), TextToSpeech.OnInitListener 
         private fun nextParagraph() {
             //跳过全标点段落
             do {
-                readAloudNumber += contentList[nowSpeak].length + 1 - paragraphStartPos
+                if (!isReadingSummary) {
+                    readAloudNumber += contentList[nowSpeak].length + 1 - paragraphStartPos
+                }
                 paragraphStartPos = 0
                 nowSpeak++
                 if (nowSpeak >= contentList.size) {

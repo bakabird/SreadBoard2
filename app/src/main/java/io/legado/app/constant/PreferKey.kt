@@ -188,4 +188,6 @@ object PreferKey {
     const val aiRuleSummary = "aiRuleSummary"
     const val aiRuleSkipRisk = "aiRuleSkipRisk"
     const val aiInsightRequestPreview = "aiInsightRequestPreview"
+    const val readAloudAutoSkip = "readAloudAutoSkip"
+    const val readAloudSkipConditions = "readAloudSkipConditions"
 }

@@ -108,6 +108,7 @@ object InsightManager {
                 insight.timestamp = System.currentTimeMillis()
 
                 appDb.chapterInsightDao.insert(insight)
+                postEvent(EventBus.INSIGHT_UPDATED, chapter.index)
 
             } catch (e: CancellationException) {
                 updateStatus(book.bookUrl, chapter.index, STATUS_NONE)
@@ -213,10 +214,11 @@ object InsightManager {
                     - Filler: Irrelevant to the main plot, purely padding.
                     - Low Value: Minor details, safe to skip.
                     - Skip with Caution: Contains some relevant details; skip at your own risk.
-                    - Must Read: Critical plot points, major character development, or key info.
+                    - Must Read: Critical plot points that genuinely impact subsequent understanding.
 
                     Constraint:
                     Output ONLY the category name. Do not output numbers, punctuation, or explanations.
+                    When in doubt, favor "Skip with Caution" over "Must Read".
                 """.trimIndent()
 
                 val messages = listOf(
@@ -247,6 +249,7 @@ object InsightManager {
                insight.skipRiskLabel = label
 
                appDb.chapterInsightDao.insert(insight)
+               postEvent(EventBus.INSIGHT_UPDATED, chapterIndex)
                DebugLog.d("InsightManager", "Insight inserted/updated for chapter $chapterIndex with label $label")
 
             } catch (e: CancellationException) {
