@@ -41,12 +41,16 @@ class InsightsBottomSheet(
         binding.ivClose.setOnClickListener { dismiss() }
         if (readOnly) {
             binding.tvTaskQueue.gone()
+            binding.tvBatchAnalyze.gone()
             binding.btnRetrySummary.gone()
             binding.btnRetrySkipRisk.gone()
             binding.btnSkipChapter.gone()
         } else {
             binding.tvTaskQueue.setOnClickListener {
                 AITaskQueueDialog().show(parentFragmentManager, "AITaskQueueDialog")
+            }
+            binding.tvBatchAnalyze.setOnClickListener {
+                showBatchAnalyzeDialog()
             }
         }
 
@@ -151,6 +155,50 @@ class InsightsBottomSheet(
                 }
             }
         }
+    }
+
+    private fun showBatchAnalyzeDialog() {
+        val options = arrayOf("Next 10 Chapters", "Next 20 Chapters", "Next 50 Chapters", "Custom...")
+        androidx.appcompat.app.AlertDialog.Builder(requireContext())
+            .setTitle("Batch Analyze")
+            .setItems(options) { _, which ->
+                when (which) {
+                    0 -> InsightManager.generateBatchSkipRisk(book, chapter.index + 1, 10)
+                    1 -> InsightManager.generateBatchSkipRisk(book, chapter.index + 1, 20)
+                    2 -> InsightManager.generateBatchSkipRisk(book, chapter.index + 1, 50)
+                    3 -> showCustomBatchDialog()
+                }
+            }
+            .show()
+    }
+
+    private fun showCustomBatchDialog() {
+        val frameLayout = android.widget.FrameLayout(requireContext())
+        val editText = android.widget.EditText(requireContext())
+        editText.inputType = android.text.InputType.TYPE_CLASS_NUMBER
+        editText.hint = "Enter number of chapters"
+
+        val margin = (24 * resources.displayMetrics.density).toInt()
+        val params = android.widget.FrameLayout.LayoutParams(
+            android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+            android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+        )
+        params.leftMargin = margin
+        params.rightMargin = margin
+        editText.layoutParams = params
+        frameLayout.addView(editText)
+
+        androidx.appcompat.app.AlertDialog.Builder(requireContext())
+            .setTitle("Custom Batch")
+            .setView(frameLayout)
+            .setPositiveButton("Confirm") { _, _ ->
+                val count = editText.text.toString().toIntOrNull()
+                if (count != null && count > 0) {
+                    InsightManager.generateBatchSkipRisk(book, chapter.index + 1, count)
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 
     override fun onDestroyView() {

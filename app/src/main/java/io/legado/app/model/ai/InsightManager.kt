@@ -289,6 +289,18 @@ object InsightManager {
     }
 
 
+    fun generateBatchSkipRisk(book: Book, startIndex: Int, count: Int) {
+        scope.launch {
+            val totalChapters = appDb.bookChapterDao.getChapterCount(book.bookUrl)
+            val end = (startIndex + count).coerceAtMost(totalChapters)
+            DebugLog.d("InsightManager", "Batch generating skip risk for ${book.name} from $startIndex to $end")
+
+            for (i in startIndex until end) {
+                generateSkipRisk(book, i)
+            }
+        }
+    }
+
     private fun updateStatus(bookUrl: String, chapterIndex: Int, status: Int) {
         val insight = appDb.chapterInsightDao.get(bookUrl, chapterIndex)
             ?: ChapterInsight(bookUrl = bookUrl, chapterIndex = chapterIndex)
