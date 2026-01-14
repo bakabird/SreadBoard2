@@ -31,6 +31,42 @@ object InsightManager {
     const val STATUS_READY = 2
     const val STATUS_FAILED = 3
 
+    val DEFAULT_SUMMARY_PROMPT = """
+        You are a helpful reading assistant.
+        Summarize the following chapter in about 200 words.
+        Provide 5-10 bullet points for key events.
+        If the chapter introduces new concepts or new character relationships, mark them with [NEW CONCEPT] or [NEW RELATIONSHIP].
+
+        Chapter Title: {{title}}
+
+        Content:
+        {{content}}
+    """.trimIndent()
+
+    val DEFAULT_SKIP_RISK_PROMPT = """
+        Evaluate the "Skip Risk" for Chapter {{chapterIndex}} based on the provided context.
+
+        Context:
+        {{context}}
+
+        Task:
+        Classify this chapter into EXACTLY ONE of the following categories:
+        - Filler
+        - Low Value
+        - Skip with Caution
+        - Must Read
+
+        Definitions:
+        - Filler: Irrelevant to the main plot, purely padding.
+        - Low Value: Minor details, safe to skip.
+        - Skip with Caution: Contains some relevant details; skip at your own risk.
+        - Must Read: Critical plot points that genuinely impact subsequent understanding.
+
+        Constraint:
+        Output ONLY the category name. Do not output numbers, punctuation, or explanations.
+        When in doubt, favor "Skip with Caution" over "Must Read".
+    """.trimIndent()
+
     data class AITask(
         val key: String,
         val bookUrl: String,
@@ -81,17 +117,10 @@ object InsightManager {
                 }
 
                 // Construct Prompt
-                val prompt = """
-                    You are a helpful reading assistant.
-                    Summarize the following chapter in about 200 words.
-                    Provide 5-10 bullet points for key events.
-                    If the chapter introduces new concepts or new character relationships, mark them with [NEW CONCEPT] or [NEW RELATIONSHIP].
-
-                    Chapter Title: ${chapter.title}
-
-                    Content:
-                    $content
-                """.trimIndent()
+                val promptTemplate = if (rule.summaryPrompt.isBlank()) DEFAULT_SUMMARY_PROMPT else rule.summaryPrompt
+                val prompt = promptTemplate
+                    .replace("{{title}}", chapter.title)
+                    .replace("{{content}}", content)
 
                 val messages = listOf(
                     mapOf("role" to "system", "content" to "You are a helpful reading assistant."),
@@ -197,29 +226,10 @@ object InsightManager {
                 }
 
                 // All ready, generate Skip Risk
-                val prompt = """
-                    Evaluate the "Skip Risk" for Chapter $chapterIndex based on the provided context.
-
-                    Context:
-                    $contextBuilder
-
-                    Task:
-                    Classify this chapter into EXACTLY ONE of the following categories:
-                    - Filler
-                    - Low Value
-                    - Skip with Caution
-                    - Must Read
-
-                    Definitions:
-                    - Filler: Irrelevant to the main plot, purely padding.
-                    - Low Value: Minor details, safe to skip.
-                    - Skip with Caution: Contains some relevant details; skip at your own risk.
-                    - Must Read: Critical plot points that genuinely impact subsequent understanding.
-
-                    Constraint:
-                    Output ONLY the category name. Do not output numbers, punctuation, or explanations.
-                    When in doubt, favor "Skip with Caution" over "Must Read".
-                """.trimIndent()
+                val promptTemplate = if (rule.skipRiskPrompt.isBlank()) DEFAULT_SKIP_RISK_PROMPT else rule.skipRiskPrompt
+                val prompt = promptTemplate
+                    .replace("{{chapterIndex}}", chapterIndex.toString())
+                    .replace("{{context}}", contextBuilder.toString())
 
                 val messages = listOf(
                    mapOf("role" to "system", "content" to "You are a reading assistant. Your sole task is to classify the chapter. Output ONLY the label."),

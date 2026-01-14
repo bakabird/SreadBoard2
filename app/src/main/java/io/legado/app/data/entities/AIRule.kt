@@ -15,5 +15,7 @@ data class AIRule(
     var apiKey: String = "",
     var model: String = "",
     var concurrentLimit: Int = 1,
-    var enabled: Boolean = true
+    var enabled: Boolean = true,
+    var summaryPrompt: String = "",
+    var skipRiskPrompt: String = ""
 ) : Parcelable

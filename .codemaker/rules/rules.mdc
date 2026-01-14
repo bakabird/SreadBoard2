@@ -1,0 +1,137 @@
+---
+description: AI coding guidance and rules for this repository.
+alwaysApply: true
+---
+<rule>
+# Legado Codebase AI Guidance
+
+## 1. High-Level Overview
+- **Architecture**: MVVM (Model-View-ViewModel) pattern.
+    - **Activities/Fragments**: `BaseActivity`, `VMBaseActivity`, `BaseFragment`.
+    - **ViewModel**: `BaseViewModel`.
+    - **Data**: Room Database (`appDb`) with DAO pattern.
+- **Language**: Kotlin (exclusively).
+- **Entry Points**:
+    - `io.legado.app.App` (Application Init).
+    - `io.legado.app.ui.main.MainActivity` (Main UI).
+    - `io.legado.app.ui.welcome.WelcomeActivity` (Splash).
+
+## 2. Code Style & Consistency Enforcers
+- **Naming Conventions**:
+    - **Classes**: PascalCase (e.g., `BookDao`, `MainActivity`).
+    - **Variables/Functions**: camelCase (e.g., `bookUrl`, `initView`).
+    - **Update Methods**: Prefix with `up` (e.g., `upVersion`, `upHomePage`, `upBottomMenu`).
+    - **Constants**: CONSTANT_CASE inside `companion object` or `object`.
+- **Formatting**:
+    - **Indentation**: 4 spaces.
+    - **Semicolons**: Omit semicolons.
+- **View Binding**:
+    - **Strictly** use ViewBinding.
+    - Activities: `override val binding: VB` (Abstract in Base).
+    - Property delegation usage: `override val binding by viewBinding(ActivityMainBinding::inflate)`.
+- **Extensions**: Heavy reliance on Kotlin extension functions. Check `io.legado.app.utils.*` before writing new utilities.
+- **Splitties**: Use `splitties` library for system services and context (e.g., `appCtx`, `notificationManager`, `layoutInflater`).
+
+## 3. Rapid Reference & Context Map
+- **Core Access Patterns**:
+    - **Application Context**: `splitties.init.appCtx` (Global).
+    - **Database**: `io.legado.app.data.appDb` (Global Singleton).
+    - **Configuration**: `io.legado.app.help.config.AppConfig` (Preferences/Flags).
+- **Frequent Utilities**:
+    - **Toast**: `io.legado.app.utils.toastOnUi(message: String/Int)` (Context/Fragment extension).
+    - **Files**: `io.legado.app.utils.FileUtils` (`createFileIfNotExist`, `readText`, `writeText`).
+    - **Logging**: `io.legado.app.utils.LogUtils`.
+    - **Color**: `io.legado.app.utils.ColorUtils`.
+    - **Resource/Tint**: `io.legado.app.utils.applyTint`, `io.legado.app.utils.applyOpenTint`.
+- **Key Entities**:
+    - `Book` (`io.legado.app.data.entities.Book`)
+    - `BookSource` (`io.legado.app.data.entities.BookSource`)
+    - `BookChapter` (`io.legado.app.data.entities.BookChapter`)
+    - `RssSource` (`io.legado.app.data.entities.RssSource`)
+
+## 4. Game/App-Specific Patterns
+- **Async & Concurrency**:
+    - **Coroutines**: Primary mechanism. Use `lifecycleScope.launch` in UI components.
+    - **IO Operations**: Wrap in `withContext(Dispatchers.IO)`.
+    - **Flow**: Use `Flow` for DB observation (e.g., `bookDao.flowAll()`).
+    - **Events**: `LiveEventBus` used for cross-component communication.
+        - Observe: `observeEvent<Type>(Key) { ... }`.
+- **Lifecycle Management**:
+    - **Initialization**: Use `onActivityCreated(savedInstanceState)` in `BaseActivity` subclasses, NOT `onCreate`.
+    - **Cleanup**: `onDestroy` handles cleanup (e.g. `BookHelp.clearInvalidCache()`).
+- **Data & Database**:
+    - **Main Thread Queries**: `allowMainThreadQueries()` is ENABLED in `AppDatabase`. While ideally avoided, follow existing pattern if simple sync access is needed, but prefer async/Flow for heavy loads.
+- **Parsing/Scripting**:
+    - **Rhino**: Javascript engine used for source rules (`io.legado.app.help.rhino`).
+    - **Jsoup**: HTML parsing (`org.jsoup`).
+
+## 5. Developer Workflows
+- **Dependencies**: Defined in `app/build.gradle`. Uses `libs.*` (Version Catalog).
+- **Refactoring**: When modifying entities (e.g., `Book`), MUST handle Room Migrations in `DatabaseMigrations.kt`.
+- **UI Widgets**: Custom widgets in `io.legado.app.ui.widget`.
+
+## 6. Scaffolding Templates
+
+### UI Widget Template
+When creating a new UI Widget, use the following template to ensure consistency (Extending `View` or `ViewGroup` or existing widgets):
+
+```kotlin
+package io.legado.app.ui.widget
+
+import android.content.Context
+import android.graphics.Canvas
+import android.util.AttributeSet
+import android.view.View
+import io.legado.app.utils.dpToPx
+
+/**
+ * Description of the widget.
+ */
+class CustomWidget @JvmOverloads constructor(
+    context: Context,
+    attrs: AttributeSet? = null,
+    defStyleAttr: Int = 0
+) : View(context, attrs, defStyleAttr) {
+
+    init {
+        // Initialize paints, attributes, etc.
+    }
+
+    override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+        super.onMeasure(widthMeasureSpec, heightMeasureSpec)
+        // Measure logic if needed
+    }
+
+    override fun onDraw(canvas: Canvas) {
+        super.onDraw(canvas)
+        // Drawing logic
+    }
+}
+```
+
+### Test Case Template
+For unit tests, use JUnit 4 in `app/src/test`.
+
+```kotlin
+package io.legado.app
+
+import org.junit.Assert.assertEquals
+import org.junit.Test
+import org.junit.Before
+
+class FeatureUnitTest {
+
+    @Before
+    fun setUp() {
+        // Initialization
+    }
+
+    @Test
+    fun testFeatureLogic() {
+        val expected = 4
+        val actual = 2 + 2
+        assertEquals(expected, actual)
+    }
+}
+```
+</rule>

@@ -58,4 +58,26 @@
             android:singleLine="true" />
     </com.google.android.material.textfield.TextInputLayout>
 
+    <TextView
+        android:id="@+id/tv_edit_summary_prompt"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:background="?attr/selectableItemBackground"
+        android:padding="12dp"
+        android:text="Edit Summary Prompt"
+        android:textColor="?attr/colorAccent"
+        android:textSize="16sp" />
+
+    <TextView
+        android:id="@+id/tv_edit_skip_risk_prompt"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:background="?attr/selectableItemBackground"
+        android:padding="12dp"
+        android:text="Edit Skip Risk Prompt"
+        android:textColor="?attr/colorAccent"
+        android:textSize="16sp" />
+
 </LinearLayout>

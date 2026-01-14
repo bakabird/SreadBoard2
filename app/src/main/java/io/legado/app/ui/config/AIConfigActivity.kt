@@ -1,6 +1,7 @@
 package io.legado.app.ui.config
 
 import android.annotation.SuppressLint
+import android.widget.TextView
 import android.os.Bundle
 import android.view.MenuItem
 import androidx.activity.viewModels
@@ -13,6 +14,7 @@ import io.legado.app.data.appDb
 import io.legado.app.data.entities.AIRule
 import io.legado.app.databinding.ActivityAiConfigBinding
 import io.legado.app.databinding.DialogEditTextBinding
+import io.legado.app.model.ai.InsightManager
 import io.legado.app.lib.dialogs.alert
 import io.legado.app.lib.dialogs.selector
 import io.legado.app.lib.theme.primaryColor
@@ -130,6 +132,11 @@ class AIConfigActivity : VMBaseActivity<ActivityAiConfigBinding, AIConfigViewMod
         val etBaseUrl = dialogView.findViewById<android.widget.EditText>(R.id.et_base_url)
         val etApiKey = dialogView.findViewById<android.widget.EditText>(R.id.et_api_key)
         val etModel = dialogView.findViewById<android.widget.EditText>(R.id.et_model)
+        val tvSummaryPrompt = dialogView.findViewById<TextView>(R.id.tv_edit_summary_prompt)
+        val tvSkipRiskPrompt = dialogView.findViewById<TextView>(R.id.tv_edit_skip_risk_prompt)
+
+        var currentSummaryPrompt = rule?.summaryPrompt ?: ""
+        var currentSkipRiskPrompt = rule?.skipRiskPrompt ?: ""
 
         if (rule != null) {
             etName.setText(rule.name)
@@ -142,6 +149,28 @@ class AIConfigActivity : VMBaseActivity<ActivityAiConfigBinding, AIConfigViewMod
             etModel.setText("gpt-3.5-turbo")
         }
 
+        tvSummaryPrompt.setOnClickListener {
+            showPromptEditDialog(
+                "Edit Summary Prompt",
+                currentSummaryPrompt.ifBlank { InsightManager.DEFAULT_SUMMARY_PROMPT },
+                InsightManager.DEFAULT_SUMMARY_PROMPT,
+                "Placeholders: {{title}}, {{content}}"
+            ) { newPrompt ->
+                currentSummaryPrompt = newPrompt
+            }
+        }
+
+        tvSkipRiskPrompt.setOnClickListener {
+            showPromptEditDialog(
+                "Edit Skip Risk Prompt",
+                currentSkipRiskPrompt.ifBlank { InsightManager.DEFAULT_SKIP_RISK_PROMPT },
+                InsightManager.DEFAULT_SKIP_RISK_PROMPT,
+                "Placeholders: {{chapterIndex}}, {{context}}"
+            ) { newPrompt ->
+                currentSkipRiskPrompt = newPrompt
+            }
+        }
+
         alert(title = if (rule == null) "Add AI Rule" else "Edit AI Rule") {
             customView { dialogView }
             yesButton {
@@ -150,6 +179,8 @@ class AIConfigActivity : VMBaseActivity<ActivityAiConfigBinding, AIConfigViewMod
                 newRule.baseUrl = etBaseUrl.text.toString()
                 newRule.apiKey = etApiKey.text.toString()
                 newRule.model = etModel.text.toString()
+                newRule.summaryPrompt = currentSummaryPrompt
+                newRule.skipRiskPrompt = currentSkipRiskPrompt
 
                 if (newRule.name.isBlank()) {
                     toast("Name cannot be empty")
@@ -157,6 +188,35 @@ class AIConfigActivity : VMBaseActivity<ActivityAiConfigBinding, AIConfigViewMod
                 }
 
                 viewModel.saveRule(newRule)
+            }
+            noButton()
+        }
+    }
+
+    private fun showPromptEditDialog(
+        title: String,
+        initialContent: String,
+        defaultContent: String,
+        hint: String,
+        onSave: (String) -> Unit
+    ) {
+        val dialogView = layoutInflater.inflate(R.layout.dialog_edit_text, null)
+        val editView = dialogView.findViewById<android.widget.EditText>(R.id.edit_view)
+        editView.setText(initialContent)
+
+        // Ensure scrollable multiline
+        editView.inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE
+        editView.minLines = 10
+        editView.maxLines = 20
+        editView.gravity = android.view.Gravity.TOP or android.view.Gravity.START
+
+        alert(title = title, message = hint) {
+            customView { dialogView }
+            yesButton {
+                onSave(editView.text.toString())
+            }
+            neutralButton("Reset to Default") {
+                 onSave(defaultContent)
             }
             noButton()
         }
