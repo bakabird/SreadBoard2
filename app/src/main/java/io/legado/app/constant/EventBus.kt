@@ -34,7 +34,6 @@ object EventBus {
     const val EXPORT_BOOK = "exportBook"
     const val UP_MANGA_CONFIG = "upMangaConfig"
     const val PLAY_MODE_CHANGED = "playModeChanged"
-    const val AI_REQUEST_PREVIEW = "aiRequestPreview"
     const val AI_ERROR = "aiError"
     const val INSIGHT_UPDATED = "insightUpdated"
 }

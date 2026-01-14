@@ -189,11 +189,13 @@
         <item>@string/read_aloud_skip_filler</item>
         <item>@string/read_aloud_skip_low_value</item>
         <item>@string/read_aloud_skip_caution</item>
+        <item>@string/read_aloud_skip_must_read</item>
     </string-array>
 
     <string-array name="read_aloud_skip_conditions_values">
         <item>1</item>
         <item>2</item>
         <item>3</item>
+        <item>4</item>
     </string-array>
 </resources>

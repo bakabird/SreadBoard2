@@ -41,12 +41,39 @@ class AIConfigActivity : VMBaseActivity<ActivityAiConfigBinding, AIConfigViewMod
         initData()
     }
 
-    private fun initView() {
-        binding.titleBar.title = "Chapter Insights Config"
-        binding.titleBar.menu.add("AI Task Queue").setOnMenuItemClickListener {
-            AITaskQueueDialog().show(supportFragmentManager, "AITaskQueueDialog")
-            true
+    override fun onCompatCreateOptionsMenu(menu: android.view.Menu): Boolean {
+        menuInflater.inflate(R.menu.ai_config, menu)
+        return super.onCompatCreateOptionsMenu(menu)
+    }
+
+    override fun onCompatOptionsItemSelected(item: MenuItem): Boolean {
+        when (item.itemId) {
+            R.id.menu_task_queue -> {
+                AITaskQueueDialog().show(supportFragmentManager, "AITaskQueueDialog")
+                return true
+            }
+            R.id.menu_logs -> {
+                AILogDialog().show(supportFragmentManager, "AILogDialog")
+                return true
+            }
         }
+        return super.onCompatOptionsItemSelected(item)
+    }
+
+    private fun initView() {
+        binding.titleBar.title = "AI Config"
+        binding.titleBar.menu.add("AI Task Queue")
+            .setShowAsActionFlags(MenuItem.SHOW_AS_ACTION_IF_ROOM)
+            .setOnMenuItemClickListener {
+                AITaskQueueDialog().show(supportFragmentManager, "AITaskQueueDialog")
+                true
+            }
+        binding.titleBar.menu.add("AI Logs")
+            .setShowAsActionFlags(MenuItem.SHOW_AS_ACTION_IF_ROOM)
+            .setOnMenuItemClickListener {
+                AILogDialog().show(supportFragmentManager, "AILogDialog")
+                true
+            }
 
         binding.recyclerView.layoutManager = LinearLayoutManager(this)
         binding.recyclerView.adapter = adapter

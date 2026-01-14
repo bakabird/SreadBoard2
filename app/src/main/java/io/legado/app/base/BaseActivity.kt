@@ -32,7 +32,6 @@ import io.legado.app.lib.theme.ThemeStore
 import io.legado.app.lib.theme.backgroundColor
 import io.legado.app.lib.theme.primaryColor
 import io.legado.app.model.ai.AIClient
-import io.legado.app.model.ai.AIRequestPreviewEvent
 import io.legado.app.ui.widget.TitleBar
 import io.legado.app.utils.ColorUtils
 import io.legado.app.utils.applyBackgroundTint
@@ -102,7 +101,6 @@ abstract class BaseActivity<VB : ViewBinding>(
         onBackPressedDispatcher.addCallback(this) {
             finish()
         }
-        observeAiRequestPreviewBus()
         observeLiveBus()
         onActivityCreated(savedInstanceState)
     }
@@ -210,36 +208,6 @@ abstract class BaseActivity<VB : ViewBinding>(
     }
 
     open fun observeLiveBus() {
-    }
-
-    private fun observeAiRequestPreviewBus() {
-        observeEvent<AIRequestPreviewEvent>(EventBus.AI_REQUEST_PREVIEW) { event ->
-            if (aiRequestPreviewDialog?.isShowing == true) return@observeEvent
-            val padding = 16.dpToPx()
-            val textView = TextView(this).apply {
-                text = event.message
-                setTextIsSelectable(true)
-                typeface = Typeface.MONOSPACE
-                setPadding(padding, padding, padding, padding)
-            }
-            val scrollView = ScrollView(this).apply {
-                addView(textView)
-            }
-            aiRequestPreviewDialog = alert(title = event.title) {
-                setCancelable(false)
-                customView { scrollView }
-                positiveButton("Continue") {
-                    AIClient.confirmRequestPreview(event.requestId)
-                }
-                onDismiss {
-                    aiRequestPreviewDialog = null
-                    AIClient.confirmRequestPreview(event.requestId)
-                }
-                onKeyPressed { _, keyCode, _ ->
-                    keyCode == KeyEvent.KEYCODE_BACK
-                }
-            }
-        }
     }
 
     override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
