@@ -14,9 +14,12 @@ interface ChapterInsightDao {
 
     @Query("SELECT * FROM chapter_insights WHERE bookUrl = :bookUrl")
     fun flowByBook(bookUrl: String): Flow<List<ChapterInsight>>
-    
+
     @Query("SELECT * FROM chapter_insights WHERE bookUrl = :bookUrl AND chapterIndex IN (:indices)")
     fun getBatch(bookUrl: String, indices: List<Int>): List<ChapterInsight>
+
+    @Query("DELETE FROM chapter_insights WHERE bookUrl = :bookUrl AND chapterIndex >= :startIndex AND chapterIndex < :endIndex")
+    fun deleteBatch(bookUrl: String, startIndex: Int, endIndex: Int)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     fun insert(vararg insight: ChapterInsight)

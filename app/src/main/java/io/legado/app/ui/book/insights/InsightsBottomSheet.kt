@@ -16,6 +16,7 @@ import io.legado.app.databinding.DialogChapterInsightsBinding
 import io.legado.app.model.ai.InsightManager
 import io.legado.app.ui.config.AITaskQueueDialog
 import io.legado.app.utils.gone
+import io.legado.app.utils.toastOnUi
 import io.legado.app.utils.visible
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
@@ -40,17 +41,13 @@ class InsightsBottomSheet(
         binding.tvTitle.text = "Chapter ${chapter.index + 1} Insights"
         binding.ivClose.setOnClickListener { dismiss() }
         if (readOnly) {
-            binding.tvTaskQueue.gone()
-            binding.tvBatchAnalyze.gone()
+            binding.ivMore.gone()
             binding.btnRetrySummary.gone()
             binding.btnRetrySkipRisk.gone()
             binding.btnSkipChapter.gone()
         } else {
-            binding.tvTaskQueue.setOnClickListener {
-                AITaskQueueDialog().show(parentFragmentManager, "AITaskQueueDialog")
-            }
-            binding.tvBatchAnalyze.setOnClickListener {
-                showBatchAnalyzeDialog()
+            binding.ivMore.setOnClickListener {
+                showMenu(it)
             }
         }
 
@@ -155,6 +152,64 @@ class InsightsBottomSheet(
                 }
             }
         }
+    }
+
+    private fun showMenu(view: View) {
+        val popup = androidx.appcompat.widget.PopupMenu(requireContext(), view)
+        popup.menu.add(0, 1, 0, "AI Task Queue")
+        popup.menu.add(0, 2, 0, "Batch Analyze")
+        popup.menu.add(0, 3, 0, "Batch Delete")
+
+        popup.setOnMenuItemClickListener { item ->
+            when (item.itemId) {
+                1 -> AITaskQueueDialog().show(parentFragmentManager, "AITaskQueueDialog")
+                2 -> showBatchAnalyzeDialog()
+                3 -> showBatchDeleteInput()
+            }
+            true
+        }
+        popup.show()
+    }
+
+    private fun showBatchDeleteInput() {
+        val frameLayout = android.widget.FrameLayout(requireContext())
+        val editText = android.widget.EditText(requireContext())
+        editText.inputType = android.text.InputType.TYPE_CLASS_NUMBER
+        editText.hint = "Delete insights for next X chapters"
+
+        val margin = (24 * resources.displayMetrics.density).toInt()
+        val params = android.widget.FrameLayout.LayoutParams(
+            android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+            android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+        )
+        params.leftMargin = margin
+        params.rightMargin = margin
+        editText.layoutParams = params
+        frameLayout.addView(editText)
+
+        androidx.appcompat.app.AlertDialog.Builder(requireContext())
+            .setTitle("Batch Delete")
+            .setView(frameLayout)
+            .setPositiveButton("Confirm") { _, _ ->
+                val count = editText.text.toString().toIntOrNull()
+                if (count != null && count > 0) {
+                    showBatchDeleteConfirmation(count)
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun showBatchDeleteConfirmation(count: Int) {
+        androidx.appcompat.app.AlertDialog.Builder(requireContext())
+            .setTitle("Confirm Deletion")
+            .setMessage("Are you sure you want to delete AI insights for $count chapters starting from the current one? This will also cancel any pending tasks for these chapters.")
+            .setPositiveButton("Delete") { _, _ ->
+                InsightManager.deleteBatchInsights(book.bookUrl, chapter.index, count)
+                toastOnUi("Deleted insights for $count chapters")
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 
     private fun showBatchAnalyzeDialog() {

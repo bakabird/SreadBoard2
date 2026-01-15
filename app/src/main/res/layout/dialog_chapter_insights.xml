@@ -24,27 +24,15 @@
             android:textSize="18sp"
             android:textStyle="bold" />
 
-        <TextView
-            android:id="@+id/tv_batch_analyze"
+        <ImageView
+            android:id="@+id/iv_more"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:background="?attr/selectableItemBackgroundBorderless"
-            android:paddingHorizontal="12dp"
-            android:paddingVertical="6dp"
-            android:text="Batch"
-            android:textColor="?attr/colorAccent"
-            android:textSize="14sp" />
-
-        <TextView
-            android:id="@+id/tv_task_queue"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:paddingHorizontal="12dp"
-            android:paddingVertical="6dp"
-            android:text="Queue"
-            android:textColor="?attr/colorAccent"
-            android:textSize="14sp" />
+            android:contentDescription="More Options"
+            android:padding="8dp"
+            android:src="@drawable/ic_more_vert"
+            app:tint="?android:attr/textColorPrimary" />
 
         <ImageView
             android:id="@+id/iv_close"

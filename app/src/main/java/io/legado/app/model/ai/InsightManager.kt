@@ -301,6 +301,30 @@ object InsightManager {
         }
     }
 
+    fun deleteBatchInsights(bookUrl: String, startIndex: Int, count: Int) {
+        scope.launch {
+            val endIndex = startIndex + count
+
+            // 1. Cancel related tasks
+            val iterator = queue.iterator()
+            while (iterator.hasNext()) {
+                val entry = iterator.next()
+                // Check if task belongs to the book and range
+                val task = entry.value.task
+                if (task.bookUrl == bookUrl && task.chapterIndex >= startIndex && task.chapterIndex < endIndex) {
+                    entry.value.job.cancel()
+                    iterator.remove()
+                    DebugLog.d("InsightManager", "Cancelled task for deletion: ${task.key}")
+                }
+            }
+            updateTasksFlow()
+
+            // 2. Delete from DB
+            appDb.chapterInsightDao.deleteBatch(bookUrl, startIndex, endIndex)
+            DebugLog.d("InsightManager", "Deleted insights for $bookUrl from $startIndex to $endIndex")
+        }
+    }
+
     private fun updateStatus(bookUrl: String, chapterIndex: Int, status: Int) {
         val insight = appDb.chapterInsightDao.get(bookUrl, chapterIndex)
             ?: ChapterInsight(bookUrl = bookUrl, chapterIndex = chapterIndex)
