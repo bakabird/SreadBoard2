@@ -29,7 +29,7 @@ class AIRuleAdapter(val activity: AIConfigActivity) : RecyclerAdapter<AIRule, It
         }
         holder.itemView.setOnLongClickListener {
             getItem(holder.layoutPosition)?.let {
-                activity.deleteRule(it)
+                activity.showRuleMenu(it)
             }
             true
         }

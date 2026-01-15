@@ -9,4 +9,8 @@
         android:id="@+id/menu_logs"
         android:title="AI Logs"
         app:showAsAction="ifRoom|withText" />
+    <item
+        android:id="@+id/menu_import_rule"
+        android:title="Import AI Rule"
+        app:showAsAction="never" />
 </menu>

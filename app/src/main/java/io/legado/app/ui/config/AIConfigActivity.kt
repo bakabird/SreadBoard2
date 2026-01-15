@@ -26,6 +26,10 @@ import io.legado.app.utils.putPrefBoolean
 import io.legado.app.utils.setEdgeEffectColor
 import io.legado.app.utils.toastOnUi
 import io.legado.app.utils.viewbindingdelegate.viewBinding
+import io.legado.app.utils.GSON
+import io.legado.app.utils.fromJsonObject
+import io.legado.app.utils.sendToClip
+import io.legado.app.utils.getClipText
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
@@ -56,24 +60,16 @@ class AIConfigActivity : VMBaseActivity<ActivityAiConfigBinding, AIConfigViewMod
                 AILogDialog().show(supportFragmentManager, "AILogDialog")
                 return true
             }
+            R.id.menu_import_rule -> {
+                importRule()
+                return true
+            }
         }
         return super.onCompatOptionsItemSelected(item)
     }
 
     private fun initView() {
         binding.titleBar.title = "AI Config"
-        binding.titleBar.menu.add("AI Task Queue")
-            .setShowAsActionFlags(MenuItem.SHOW_AS_ACTION_IF_ROOM)
-            .setOnMenuItemClickListener {
-                AITaskQueueDialog().show(supportFragmentManager, "AITaskQueueDialog")
-                true
-            }
-        binding.titleBar.menu.add("AI Logs")
-            .setShowAsActionFlags(MenuItem.SHOW_AS_ACTION_IF_ROOM)
-            .setOnMenuItemClickListener {
-                AILogDialog().show(supportFragmentManager, "AILogDialog")
-                true
-            }
 
         binding.recyclerView.layoutManager = LinearLayoutManager(this)
         binding.recyclerView.adapter = adapter
@@ -246,6 +242,83 @@ class AIConfigActivity : VMBaseActivity<ActivityAiConfigBinding, AIConfigViewMod
                  onSave(defaultContent)
             }
             noButton()
+        }
+    }
+
+    fun showRuleMenu(rule: AIRule) {
+        selector(
+            title = rule.name,
+            items = listOf("Edit", "Export", "Delete")
+        ) { _, i ->
+            when (i) {
+                0 -> showEditDialog(rule)
+                1 -> exportRule(rule)
+                2 -> deleteRule(rule)
+            }
+        }
+    }
+
+    private fun exportRule(rule: AIRule) {
+        alert(title = "Export Rule", message = "Do you want to include the API Key?") {
+            positiveButton("Include") {
+                val json = GSON.toJson(rule)
+                sendToClip(json)
+                toast("Rule exported to clipboard (with API Key)")
+            }
+            negativeButton("Exclude") {
+                val safeRule = rule.copy(apiKey = "")
+                val json = GSON.toJson(safeRule)
+                sendToClip(json)
+                toast("Rule exported to clipboard (without API Key)")
+            }
+            neutralButton("Cancel")
+        }
+    }
+
+    private fun importRule() {
+        val clipText = getClipText()
+        val rule = GSON.fromJsonObject<AIRule>(clipText).getOrNull()
+        if (rule == null) {
+            showImportDialog(clipText ?: "")
+        } else {
+            saveImportedRule(rule)
+        }
+    }
+
+    @SuppressLint("InflateParams")
+    private fun showImportDialog(initialText: String) {
+        val dialogView = layoutInflater.inflate(R.layout.dialog_edit_text, null)
+        val editView = dialogView.findViewById<android.widget.EditText>(R.id.edit_view)
+        editView.setText(initialText)
+
+        alert(title = "Import AI Rule", message = "Paste rule JSON here") {
+            customView { dialogView }
+            yesButton {
+                val text = editView.text.toString()
+                try {
+                    val rule = GSON.fromJsonObject<AIRule>(text).getOrThrow()
+                    saveImportedRule(rule)
+                } catch (e: Exception) {
+                    toast("Invalid JSON: ${e.message}")
+                }
+            }
+            noButton()
+        }
+    }
+
+    private fun saveImportedRule(rule: AIRule) {
+        lifecycleScope.launch {
+            val rules = adapter.getItems()
+            var newName = rule.name
+            var count = 1
+            while (rules.any { it.name == newName }) {
+                newName = "${rule.name}($count)"
+                count++
+            }
+            rule.name = newName
+            rule.id = 0
+            viewModel.saveRule(rule)
+            toast("Imported: $newName")
         }
     }
 
