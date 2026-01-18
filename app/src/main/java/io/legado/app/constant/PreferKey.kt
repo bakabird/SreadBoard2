@@ -185,9 +185,11 @@ object PreferKey {
     const val showReadTitleAddition = "showReadTitleAddition"
     const val readBarStyleFollowPage = "readBarStyleFollowPage"
     const val contentSelectSpeakMod = "contentReadAloudMod"
-    const val aiRuleSummary = "aiRuleSummary"
-    const val aiRuleSkipRisk = "aiRuleSkipRisk"
     const val aiInsightRequestPreview = "aiInsightRequestPreview"
+    const val aiSummaryProviderId = "aiSummaryProviderId"
+    const val aiSummaryPromptId = "aiSummaryPromptId"
+    const val aiSkipRiskProviderId = "aiSkipRiskProviderId"
+    const val aiSkipRiskPromptId = "aiSkipRiskPromptId"
     const val readAloudAutoSkip = "readAloudAutoSkip"
     const val readAloudSkipConditions = "readAloudSkipConditions"
 }

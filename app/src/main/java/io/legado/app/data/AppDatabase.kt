@@ -9,7 +9,9 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.sqlite.db.SupportSQLiteDatabase
-import io.legado.app.data.dao.AIRuleDao
+import io.legado.app.data.dao.AIProviderDao
+import io.legado.app.data.dao.AISkipRiskPromptDao
+import io.legado.app.data.dao.AISummaryPromptDao
 import io.legado.app.data.dao.BookChapterDao
 import io.legado.app.data.dao.BookDao
 import io.legado.app.data.dao.BookGroupDao
@@ -32,7 +34,9 @@ import io.legado.app.data.dao.SearchBookDao
 import io.legado.app.data.dao.SearchKeywordDao
 import io.legado.app.data.dao.ServerDao
 import io.legado.app.data.dao.TxtTocRuleDao
-import io.legado.app.data.entities.AIRule
+import io.legado.app.data.entities.AIProvider
+import io.legado.app.data.entities.AISkipRiskPrompt
+import io.legado.app.data.entities.AISummaryPrompt
 import io.legado.app.data.entities.Book
 import io.legado.app.data.entities.BookChapter
 import io.legado.app.data.entities.BookGroup
@@ -71,14 +75,14 @@ val appDb by lazy {
 }
 
 @Database(
-    version = 77,
+    version = 78,
     exportSchema = true,
     entities = [Book::class, BookGroup::class, BookSource::class, BookChapter::class,
         ReplaceRule::class, SearchBook::class, SearchKeyword::class, Cookie::class,
         RssSource::class, Bookmark::class, RssArticle::class, RssReadRecord::class,
         RssStar::class, TxtTocRule::class, ReadRecord::class, HttpTTS::class, Cache::class,
         RuleSub::class, DictRule::class, KeyboardAssist::class, Server::class,
-        AIRule::class, ChapterInsight::class],
+        AIProvider::class, AISummaryPrompt::class, AISkipRiskPrompt::class, ChapterInsight::class],
     views = [BookSourcePart::class],
     autoMigrations = [
         AutoMigration(from = 43, to = 44),
@@ -114,6 +118,7 @@ val appDb by lazy {
         AutoMigration(from = 73, to = 74),
         AutoMigration(from = 74, to = 75),
         AutoMigration(from = 75, to = 76),
+        AutoMigration(from = 77, to = 78, spec = DatabaseMigrations.Migration_77_78::class),
     ]
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -139,7 +144,9 @@ abstract class AppDatabase : RoomDatabase() {
     abstract val dictRuleDao: DictRuleDao
     abstract val keyboardAssistsDao: KeyboardAssistsDao
     abstract val serverDao: ServerDao
-    abstract val aiRuleDao: AIRuleDao
+    abstract val aiProviderDao: AIProviderDao
+    abstract val aiSummaryPromptDao: AISummaryPromptDao
+    abstract val aiSkipRiskPromptDao: AISkipRiskPromptDao
     abstract val chapterInsightDao: ChapterInsightDao
 
     companion object {

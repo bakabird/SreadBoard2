@@ -7,35 +7,83 @@ import kotlinx.coroutines.launch
 import io.legado.app.base.BaseViewModel
 import io.legado.app.constant.PreferKey
 import io.legado.app.data.appDb
-import io.legado.app.data.entities.AIRule
+import io.legado.app.data.entities.AIProvider
+import io.legado.app.data.entities.AISummaryPrompt
+import io.legado.app.data.entities.AISkipRiskPrompt
 import io.legado.app.utils.putPrefString
 import splitties.init.appCtx
 
 class AIConfigViewModel(application: Application) : BaseViewModel(application) {
 
-    val rulesFlow: Flow<List<AIRule>> = appDb.aiRuleDao.flowAll()
+    val providersFlow: Flow<List<AIProvider>> = appDb.aiProviderDao.flowAll()
+    val summaryPromptsFlow: Flow<List<AISummaryPrompt>> = appDb.aiSummaryPromptDao.flowAll()
+    val skipRiskPromptsFlow: Flow<List<AISkipRiskPrompt>> = appDb.aiSkipRiskPromptDao.flowAll()
 
-    fun saveRule(rule: AIRule) {
+    // Provider
+    fun saveProvider(provider: AIProvider) {
         viewModelScope.launch {
-            if (rule.id == 0L) {
-                appDb.aiRuleDao.insert(rule)
+            if (provider.id == 0L) {
+                appDb.aiProviderDao.insert(provider)
             } else {
-                appDb.aiRuleDao.update(rule)
+                appDb.aiProviderDao.update(provider)
             }
         }
     }
 
-    fun deleteRule(rule: AIRule) {
+    fun deleteProvider(provider: AIProvider) {
         viewModelScope.launch {
-            appDb.aiRuleDao.delete(rule)
+            appDb.aiProviderDao.delete(provider)
         }
     }
 
-    fun setSummaryRule(id: Long) {
-        appCtx.putPrefString(PreferKey.aiRuleSummary, id.toString())
+    // Summary Prompt
+    fun saveSummaryPrompt(prompt: AISummaryPrompt) {
+        viewModelScope.launch {
+            if (prompt.id == 0L) {
+                appDb.aiSummaryPromptDao.insert(prompt)
+            } else {
+                appDb.aiSummaryPromptDao.update(prompt)
+            }
+        }
     }
 
-    fun setSkipRiskRule(id: Long) {
-        appCtx.putPrefString(PreferKey.aiRuleSkipRisk, id.toString())
+    fun deleteSummaryPrompt(prompt: AISummaryPrompt) {
+        viewModelScope.launch {
+            appDb.aiSummaryPromptDao.delete(prompt)
+        }
+    }
+
+    // Skip Risk Prompt
+    fun saveSkipRiskPrompt(prompt: AISkipRiskPrompt) {
+        viewModelScope.launch {
+            if (prompt.id == 0L) {
+                appDb.aiSkipRiskPromptDao.insert(prompt)
+            } else {
+                appDb.aiSkipRiskPromptDao.update(prompt)
+            }
+        }
+    }
+
+    fun deleteSkipRiskPrompt(prompt: AISkipRiskPrompt) {
+        viewModelScope.launch {
+            appDb.aiSkipRiskPromptDao.delete(prompt)
+        }
+    }
+
+    // Binding
+    fun setSummaryProvider(id: Long) {
+        appCtx.putPrefString(PreferKey.aiSummaryProviderId, id.toString())
+    }
+
+    fun setSummaryPrompt(id: Long) {
+        appCtx.putPrefString(PreferKey.aiSummaryPromptId, id.toString())
+    }
+
+    fun setSkipRiskProvider(id: Long) {
+        appCtx.putPrefString(PreferKey.aiSkipRiskProviderId, id.toString())
+    }
+
+    fun setSkipRiskPrompt(id: Long) {
+        appCtx.putPrefString(PreferKey.aiSkipRiskPromptId, id.toString())
     }
 }

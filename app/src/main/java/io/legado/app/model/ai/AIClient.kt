@@ -3,7 +3,7 @@ package io.legado.app.model.ai
 import com.google.gson.Gson
 import com.google.gson.JsonObject
 import io.legado.app.constant.PreferKey
-import io.legado.app.data.entities.AIRule
+import io.legado.app.data.entities.AIProvider
 import io.legado.app.help.http.okHttpClient
 import io.legado.app.utils.getPrefBoolean
 import okhttp3.MediaType.Companion.toMediaType
@@ -31,12 +31,12 @@ object AIClient {
     private val gson = Gson()
     private val JSON = "application/json; charset=utf-8".toMediaType()
 
-    suspend fun generate(rule: AIRule, messages: List<Map<String, String>>): String {
+    suspend fun generate(provider: AIProvider, messages: List<Map<String, String>>): String {
         val client = okHttpClient
 
-        val endpoint = rule.baseUrl.trimEnd('/') + "/v1/chat/completions"
+        val endpoint = provider.baseUrl.trimEnd('/') + "/v1/chat/completions"
         val payload = mapOf(
-            "model" to rule.model,
+            "model" to provider.model,
             "messages" to messages
         )
 
@@ -49,7 +49,7 @@ object AIClient {
                 time = System.currentTimeMillis(),
                 method = "POST",
                 url = endpoint,
-                headers = if (rule.apiKey.isNotEmpty()) mapOf("Authorization" to "Bearer ***") else emptyMap(),
+                headers = if (provider.apiKey.isNotEmpty()) mapOf("Authorization" to "Bearer ***") else emptyMap(),
                 requestBody = payloadJson
             )
             AILogManager.addLog(logItem)
@@ -61,8 +61,8 @@ object AIClient {
             .url(endpoint)
             .post(requestBody)
 
-        if (rule.apiKey.isNotEmpty()) {
-            requestBuilder.addHeader("Authorization", "Bearer ${rule.apiKey}")
+        if (provider.apiKey.isNotEmpty()) {
+            requestBuilder.addHeader("Authorization", "Bearer ${provider.apiKey}")
         }
 
         val request = requestBuilder.build()

@@ -1,19 +1,20 @@
 package io.legado.app.ui.config
 
 import android.annotation.SuppressLint
-import android.widget.TextView
 import android.os.Bundle
 import android.view.MenuItem
+import android.widget.TextView
 import androidx.activity.viewModels
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
+import com.google.android.material.tabs.TabLayout
 import io.legado.app.R
 import io.legado.app.base.VMBaseActivity
 import io.legado.app.constant.PreferKey
-import io.legado.app.data.appDb
-import io.legado.app.data.entities.AIRule
+import io.legado.app.data.entities.AIProvider
+import io.legado.app.data.entities.AISkipRiskPrompt
+import io.legado.app.data.entities.AISummaryPrompt
 import io.legado.app.databinding.ActivityAiConfigBinding
-import io.legado.app.databinding.DialogEditTextBinding
 import io.legado.app.model.ai.InsightManager
 import io.legado.app.lib.dialogs.alert
 import io.legado.app.lib.dialogs.selector
@@ -38,7 +39,11 @@ class AIConfigActivity : VMBaseActivity<ActivityAiConfigBinding, AIConfigViewMod
     override val binding by viewBinding(ActivityAiConfigBinding::inflate)
     override val viewModel by viewModels<AIConfigViewModel>()
 
-    private val adapter by lazy { AIRuleAdapter(this) }
+    private val providerAdapter by lazy { AIProviderAdapter(this) }
+    private val summaryPromptAdapter by lazy { AISummaryPromptAdapter(this) }
+    private val skipRiskPromptAdapter by lazy { AISkipRiskPromptAdapter(this) }
+
+    private var currentTab = 0
 
     override fun onActivityCreated(savedInstanceState: Bundle?) {
         initView()
@@ -61,7 +66,8 @@ class AIConfigActivity : VMBaseActivity<ActivityAiConfigBinding, AIConfigViewMod
                 return true
             }
             R.id.menu_import_rule -> {
-                importRule()
+                // Simplified import for now, or expand to support importing different types
+                importConfig()
                 return true
             }
         }
@@ -72,21 +78,41 @@ class AIConfigActivity : VMBaseActivity<ActivityAiConfigBinding, AIConfigViewMod
         binding.titleBar.title = "AI Config"
 
         binding.recyclerView.layoutManager = LinearLayoutManager(this)
-        binding.recyclerView.adapter = adapter
         binding.recyclerView.addItemDecoration(VerticalDivider(this))
         binding.recyclerView.setEdgeEffectColor(primaryColor)
 
+        // Tabs
+        binding.tabLayout.addTab(binding.tabLayout.newTab().setText("Providers"))
+        binding.tabLayout.addTab(binding.tabLayout.newTab().setText("Summary Prompts"))
+        binding.tabLayout.addTab(binding.tabLayout.newTab().setText("Skip Risk Prompts"))
+
+        binding.tabLayout.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
+            override fun onTabSelected(tab: TabLayout.Tab) {
+                currentTab = tab.position
+                updateList()
+            }
+            override fun onTabUnselected(tab: TabLayout.Tab) {}
+            override fun onTabReselected(tab: TabLayout.Tab) {}
+        })
+
+        // Default to Provider
+        updateList()
+
         binding.fabAdd.applyTint(primaryColor)
         binding.fabAdd.setOnClickListener {
-            showEditDialog(null)
+            when (currentTab) {
+                0 -> editProvider(null)
+                1 -> editSummaryPrompt(null)
+                2 -> editSkipRiskPrompt(null)
+            }
         }
 
         binding.tvSummaryRule.setOnClickListener {
-            showRuleSelector(true)
+            showBindingSelector(true)
         }
 
         binding.tvSkipRiskRule.setOnClickListener {
-            showRuleSelector(false)
+            showBindingSelector(false)
         }
 
         binding.swRequestPreview.isChecked = getPrefBoolean(PreferKey.aiInsightRequestPreview, false)
@@ -95,126 +121,275 @@ class AIConfigActivity : VMBaseActivity<ActivityAiConfigBinding, AIConfigViewMod
         }
     }
 
+    private fun updateList() {
+        when (currentTab) {
+            0 -> binding.recyclerView.adapter = providerAdapter
+            1 -> binding.recyclerView.adapter = summaryPromptAdapter
+            2 -> binding.recyclerView.adapter = skipRiskPromptAdapter
+        }
+    }
+
     private fun initData() {
         lifecycleScope.launch {
-            viewModel.rulesFlow.collectLatest { rules ->
-                adapter.setItems(rules)
-                updateRuleDisplays(rules)
+            viewModel.providersFlow.collectLatest {
+                providerAdapter.setItems(it)
+                updateBindingDisplay()
+            }
+        }
+        lifecycleScope.launch {
+            viewModel.summaryPromptsFlow.collectLatest {
+                summaryPromptAdapter.setItems(it)
+                updateBindingDisplay()
+            }
+        }
+        lifecycleScope.launch {
+            viewModel.skipRiskPromptsFlow.collectLatest {
+                skipRiskPromptAdapter.setItems(it)
+                updateBindingDisplay()
             }
         }
     }
 
-    private fun updateRuleDisplays(rules: List<AIRule>) {
-        val summaryRuleId = getPrefString(PreferKey.aiRuleSummary)?.toLongOrNull()
-        val skipRiskRuleId = getPrefString(PreferKey.aiRuleSkipRisk)?.toLongOrNull()
+    @SuppressLint("SetTextI18n")
+    private fun updateBindingDisplay() {
+        val providers = providerAdapter.getItems()
+        val summaryPrompts = summaryPromptAdapter.getItems()
+        val skipRiskPrompts = skipRiskPromptAdapter.getItems()
 
-        binding.tvSummaryRule.text = rules.find { it.id == summaryRuleId }?.name ?: "Select Rule"
-        binding.tvSkipRiskRule.text = rules.find { it.id == skipRiskRuleId }?.name ?: "Select Rule"
+        val summaryProviderId = getPrefString(PreferKey.aiSummaryProviderId)?.toLongOrNull()
+        val summaryPromptId = getPrefString(PreferKey.aiSummaryPromptId)?.toLongOrNull()
+
+        val summaryProviderName = providers.find { it.id == summaryProviderId }?.name ?: "None"
+        val summaryPromptName = summaryPrompts.find { it.id == summaryPromptId }?.name ?: "Default"
+
+        binding.tvSummaryRule.text = "$summaryProviderName + $summaryPromptName"
+
+        val skipRiskProviderId = getPrefString(PreferKey.aiSkipRiskProviderId)?.toLongOrNull()
+        val skipRiskPromptId = getPrefString(PreferKey.aiSkipRiskPromptId)?.toLongOrNull()
+
+        val skipRiskProviderName = providers.find { it.id == skipRiskProviderId }?.name ?: "None"
+        val skipRiskPromptName = skipRiskPrompts.find { it.id == skipRiskPromptId }?.name ?: "Default"
+
+        binding.tvSkipRiskRule.text = "$skipRiskProviderName + $skipRiskPromptName"
     }
 
-    private fun showRuleSelector(isSummary: Boolean) {
-        val rules = adapter.getItems()
-        if (rules.isEmpty()) {
-            toast("No rules available. Please add one first.")
+    private fun showBindingSelector(isSummary: Boolean) {
+        val providers = providerAdapter.getItems()
+        if (providers.isEmpty()) {
+            toast("No providers available.")
             return
         }
 
-        val names = rules.map { it.name }
-        selector(
-            title = if (isSummary) "Select Summary Rule" else "Select Skip Risk Rule",
-            items = names
-        ) { _, index ->
-            val rule = rules[index]
+        val providerNames = providers.map { it.name }
+        selector(title = "Select Provider", items = providerNames) { _, i ->
+            val provider = providers[i]
             if (isSummary) {
-                viewModel.setSummaryRule(rule.id)
+                viewModel.setSummaryProvider(provider.id)
+
+                val prompts = summaryPromptAdapter.getItems()
+                val promptNames = mutableListOf("Default").apply {
+                    addAll(prompts.map { it.name })
+                }
+
+                selector(title = "Select Prompt", items = promptNames) { _, j ->
+                    if (j == 0) {
+                        viewModel.setSummaryPrompt(-1L)
+                    } else {
+                        val prompt = prompts[j - 1]
+                        viewModel.setSummaryPrompt(prompt.id)
+                    }
+                    updateBindingDisplay()
+                }
             } else {
-                viewModel.setSkipRiskRule(rule.id)
+                viewModel.setSkipRiskProvider(provider.id)
+
+                val prompts = skipRiskPromptAdapter.getItems()
+                val promptNames = mutableListOf("Default").apply {
+                    addAll(prompts.map { it.name })
+                }
+
+                selector(title = "Select Prompt", items = promptNames) { _, j ->
+                    if (j == 0) {
+                        viewModel.setSkipRiskPrompt(-1L)
+                    } else {
+                        val prompt = prompts[j - 1]
+                        viewModel.setSkipRiskPrompt(prompt.id)
+                    }
+                    updateBindingDisplay()
+                }
             }
-            // UI update will happen via flow collection if needed, but simple text update here is fine too
-            // Actually flow collection only triggers on db changes, prefer key changes need manual update or another observer
-            // For simplicity, we just update text views in initData's flow which triggers when DB changes.
-            // Wait, DB doesn't change when pref changes.
-            // Let's just update UI manually here or add a pref observer.
-            // Manual update for now.
-             if (isSummary) {
-                binding.tvSummaryRule.text = rule.name
-            } else {
-                binding.tvSkipRiskRule.text = rule.name
-            }
+            updateBindingDisplay()
         }
     }
 
-    @SuppressLint("InflateParams")
-    fun showEditDialog(rule: AIRule?) {
-        // Simple edit dialog for now. A full activity might be better if more fields needed.
-        // But plan said Activity/Screens, so let's stick to a simple dialog for MVP or a full custom dialog.
-        // Let's use a custom alert dialog with custom view for multiple fields.
+    // --- Provider ---
 
+    fun editProvider(provider: AIProvider?) {
         val dialogView = layoutInflater.inflate(R.layout.dialog_ai_rule_edit, null)
         val etName = dialogView.findViewById<android.widget.EditText>(R.id.et_name)
         val etBaseUrl = dialogView.findViewById<android.widget.EditText>(R.id.et_base_url)
         val etApiKey = dialogView.findViewById<android.widget.EditText>(R.id.et_api_key)
         val etModel = dialogView.findViewById<android.widget.EditText>(R.id.et_model)
-        val tvSummaryPrompt = dialogView.findViewById<TextView>(R.id.tv_edit_summary_prompt)
-        val tvSkipRiskPrompt = dialogView.findViewById<TextView>(R.id.tv_edit_skip_risk_prompt)
 
-        var currentSummaryPrompt = rule?.summaryPrompt ?: ""
-        var currentSkipRiskPrompt = rule?.skipRiskPrompt ?: ""
+        // Hide prompt fields in provider edit
+        dialogView.findViewById<TextView>(R.id.tv_edit_summary_prompt).visibility = android.view.View.GONE
+        dialogView.findViewById<TextView>(R.id.tv_edit_skip_risk_prompt).visibility = android.view.View.GONE
 
-        if (rule != null) {
-            etName.setText(rule.name)
-            etBaseUrl.setText(rule.baseUrl)
-            etApiKey.setText(rule.apiKey)
-            etModel.setText(rule.model)
+        if (provider != null) {
+            etName.setText(provider.name)
+            etBaseUrl.setText(provider.baseUrl)
+            etApiKey.setText(provider.apiKey)
+            etModel.setText(provider.model)
         } else {
-            // Defaults
             etBaseUrl.setText("https://api.openai.com")
             etModel.setText("gpt-3.5-turbo")
         }
 
-        tvSummaryPrompt.setOnClickListener {
-            showPromptEditDialog(
-                "Edit Summary Prompt",
-                currentSummaryPrompt.ifBlank { InsightManager.DEFAULT_SUMMARY_PROMPT },
-                InsightManager.DEFAULT_SUMMARY_PROMPT,
-                "Placeholders: {{title}}, {{content}}"
-            ) { newPrompt ->
-                currentSummaryPrompt = newPrompt
-            }
-        }
-
-        tvSkipRiskPrompt.setOnClickListener {
-            showPromptEditDialog(
-                "Edit Skip Risk Prompt",
-                currentSkipRiskPrompt.ifBlank { InsightManager.DEFAULT_SKIP_RISK_PROMPT },
-                InsightManager.DEFAULT_SKIP_RISK_PROMPT,
-                "Placeholders: {{chapterIndex}}, {{context}}"
-            ) { newPrompt ->
-                currentSkipRiskPrompt = newPrompt
-            }
-        }
-
-        alert(title = if (rule == null) "Add AI Rule" else "Edit AI Rule") {
+        alert(title = if (provider == null) "Add Provider" else "Edit Provider") {
             customView { dialogView }
             yesButton {
-                val newRule = rule?.copy() ?: AIRule()
-                newRule.name = etName.text.toString()
-                newRule.baseUrl = etBaseUrl.text.toString()
-                newRule.apiKey = etApiKey.text.toString()
-                newRule.model = etModel.text.toString()
-                newRule.summaryPrompt = currentSummaryPrompt
-                newRule.skipRiskPrompt = currentSkipRiskPrompt
+                val newProvider = provider?.copy() ?: AIProvider()
+                newProvider.name = etName.text.toString()
+                newProvider.baseUrl = etBaseUrl.text.toString()
+                newProvider.apiKey = etApiKey.text.toString()
+                newProvider.model = etModel.text.toString()
 
-                if (newRule.name.isBlank()) {
+                if (newProvider.name.isBlank()) {
                     toast("Name cannot be empty")
                     return@yesButton
                 }
-
-                viewModel.saveRule(newRule)
+                viewModel.saveProvider(newProvider)
             }
             noButton()
         }
     }
+
+    fun showProviderMenu(provider: AIProvider) {
+        selector(title = provider.name, items = listOf("Edit", "Export", "Delete")) { _, i ->
+            when (i) {
+                0 -> editProvider(provider)
+                1 -> exportProvider(provider)
+                2 -> deleteProvider(provider)
+            }
+        }
+    }
+
+    private fun exportProvider(provider: AIProvider) {
+        alert(title = "Export Provider", message = "Do you want to include the API Key?") {
+            positiveButton("Include") {
+                val json = GSON.toJson(provider)
+                sendToClip(json)
+                toast("Provider exported (with Key)")
+            }
+            negativeButton("Exclude") {
+                val safe = provider.copy(apiKey = "")
+                val json = GSON.toJson(safe)
+                sendToClip(json)
+                toast("Provider exported (without Key)")
+            }
+            neutralButton("Cancel")
+        }
+    }
+
+    private fun deleteProvider(provider: AIProvider) {
+        alert(title = "Delete Provider", message = "Are you sure?") {
+            yesButton { viewModel.deleteProvider(provider) }
+            noButton()
+        }
+    }
+
+    // --- Summary Prompt ---
+
+    fun editSummaryPrompt(prompt: AISummaryPrompt?) {
+        showPromptEditDialog(
+            title = if (prompt == null) "Add Summary Prompt" else "Edit Summary Prompt",
+            initialContent = prompt?.prompt ?: InsightManager.DEFAULT_SUMMARY_PROMPT,
+            defaultContent = InsightManager.DEFAULT_SUMMARY_PROMPT,
+            hint = "Name will be asked after save. Placeholders: {{title}}, {{content}}"
+        ) { content ->
+             // Ask for name
+             val nameDialogView = layoutInflater.inflate(R.layout.dialog_edit_text, null)
+             val etName = nameDialogView.findViewById<android.widget.EditText>(R.id.edit_view)
+             etName.hint = "Prompt Name"
+             if (prompt != null) etName.setText(prompt.name)
+
+             alert(title = "Prompt Name") {
+                 customView { nameDialogView }
+                 yesButton {
+                     val name = etName.text.toString()
+                     if (name.isBlank()) {
+                         toast("Name required")
+                         return@yesButton
+                     }
+                     val newPrompt = prompt?.copy(name = name, prompt = content) ?: AISummaryPrompt(name = name, prompt = content)
+                     viewModel.saveSummaryPrompt(newPrompt)
+                 }
+             }
+        }
+    }
+
+    fun showSummaryPromptMenu(prompt: AISummaryPrompt) {
+        selector(title = prompt.name, items = listOf("Edit", "Delete")) { _, i ->
+            when (i) {
+                0 -> editSummaryPrompt(prompt)
+                1 -> deleteSummaryPrompt(prompt)
+            }
+        }
+    }
+
+    private fun deleteSummaryPrompt(prompt: AISummaryPrompt) {
+        alert(title = "Delete Prompt", message = "Are you sure?") {
+            yesButton { viewModel.deleteSummaryPrompt(prompt) }
+            noButton()
+        }
+    }
+
+    // --- Skip Risk Prompt ---
+
+    fun editSkipRiskPrompt(prompt: AISkipRiskPrompt?) {
+        showPromptEditDialog(
+            title = if (prompt == null) "Add Skip Risk Prompt" else "Edit Skip Risk Prompt",
+            initialContent = prompt?.prompt ?: InsightManager.DEFAULT_SKIP_RISK_PROMPT,
+            defaultContent = InsightManager.DEFAULT_SKIP_RISK_PROMPT,
+            hint = "Name will be asked after save. Placeholders: {{chapterIndex}}, {{context}}"
+        ) { content ->
+             val nameDialogView = layoutInflater.inflate(R.layout.dialog_edit_text, null)
+             val etName = nameDialogView.findViewById<android.widget.EditText>(R.id.edit_view)
+             etName.hint = "Prompt Name"
+             if (prompt != null) etName.setText(prompt.name)
+
+             alert(title = "Prompt Name") {
+                 customView { nameDialogView }
+                 yesButton {
+                     val name = etName.text.toString()
+                     if (name.isBlank()) {
+                         toast("Name required")
+                         return@yesButton
+                     }
+                     val newPrompt = prompt?.copy(name = name, prompt = content) ?: AISkipRiskPrompt(name = name, prompt = content)
+                     viewModel.saveSkipRiskPrompt(newPrompt)
+                 }
+             }
+        }
+    }
+
+    fun showSkipRiskPromptMenu(prompt: AISkipRiskPrompt) {
+        selector(title = prompt.name, items = listOf("Edit", "Delete")) { _, i ->
+            when (i) {
+                0 -> editSkipRiskPrompt(prompt)
+                1 -> deleteSkipRiskPrompt(prompt)
+            }
+        }
+    }
+
+    private fun deleteSkipRiskPrompt(prompt: AISkipRiskPrompt) {
+        alert(title = "Delete Prompt", message = "Are you sure?") {
+            yesButton { viewModel.deleteSkipRiskPrompt(prompt) }
+            noButton()
+        }
+    }
+
+    // --- Helpers ---
 
     private fun showPromptEditDialog(
         title: String,
@@ -226,8 +401,6 @@ class AIConfigActivity : VMBaseActivity<ActivityAiConfigBinding, AIConfigViewMod
         val dialogView = layoutInflater.inflate(R.layout.dialog_edit_text, null)
         val editView = dialogView.findViewById<android.widget.EditText>(R.id.edit_view)
         editView.setText(initialContent)
-
-        // Ensure scrollable multiline
         editView.inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE
         editView.minLines = 10
         editView.maxLines = 20
@@ -239,95 +412,45 @@ class AIConfigActivity : VMBaseActivity<ActivityAiConfigBinding, AIConfigViewMod
                 onSave(editView.text.toString())
             }
             neutralButton("Reset to Default") {
-                 onSave(defaultContent)
+                onSave(defaultContent)
             }
             noButton()
         }
     }
 
-    fun showRuleMenu(rule: AIRule) {
-        selector(
-            title = rule.name,
-            items = listOf("Edit", "Export", "Delete")
-        ) { _, i ->
-            when (i) {
-                0 -> showEditDialog(rule)
-                1 -> exportRule(rule)
-                2 -> deleteRule(rule)
-            }
-        }
-    }
-
-    private fun exportRule(rule: AIRule) {
-        alert(title = "Export Rule", message = "Do you want to include the API Key?") {
-            positiveButton("Include") {
-                val json = GSON.toJson(rule)
-                sendToClip(json)
-                toast("Rule exported to clipboard (with API Key)")
-            }
-            negativeButton("Exclude") {
-                val safeRule = rule.copy(apiKey = "")
-                val json = GSON.toJson(safeRule)
-                sendToClip(json)
-                toast("Rule exported to clipboard (without API Key)")
-            }
-            neutralButton("Cancel")
-        }
-    }
-
-    private fun importRule() {
+    private fun importConfig() {
         val clipText = getClipText()
-        val rule = GSON.fromJsonObject<AIRule>(clipText).getOrNull()
-        if (rule == null) {
-            showImportDialog(clipText ?: "")
-        } else {
-            saveImportedRule(rule)
+        if (clipText.isNullOrBlank()) {
+            toast("Clipboard is empty")
+            return
         }
-    }
 
-    @SuppressLint("InflateParams")
-    private fun showImportDialog(initialText: String) {
-        val dialogView = layoutInflater.inflate(R.layout.dialog_edit_text, null)
-        val editView = dialogView.findViewById<android.widget.EditText>(R.id.edit_view)
-        editView.setText(initialText)
-
-        alert(title = "Import AI Rule", message = "Paste rule JSON here") {
-            customView { dialogView }
-            yesButton {
-                val text = editView.text.toString()
-                try {
-                    val rule = GSON.fromJsonObject<AIRule>(text).getOrThrow()
-                    saveImportedRule(rule)
-                } catch (e: Exception) {
-                    toast("Invalid JSON: ${e.message}")
-                }
+        // Try to parse as Provider
+        try {
+            val provider = GSON.fromJsonObject<AIProvider>(clipText).getOrNull()
+            if (provider != null && provider.baseUrl.isNotEmpty()) {
+                // Save
+                saveImportedProvider(provider)
+                return
             }
-            noButton()
-        }
+        } catch (e: Exception) {}
+
+        toast("Could not identify valid config from clipboard")
     }
 
-    private fun saveImportedRule(rule: AIRule) {
+    private fun saveImportedProvider(provider: AIProvider) {
         lifecycleScope.launch {
-            val rules = adapter.getItems()
-            var newName = rule.name
+            val providers = providerAdapter.getItems()
+            var newName = provider.name
             var count = 1
-            while (rules.any { it.name == newName }) {
-                newName = "${rule.name}($count)"
+            while (providers.any { it.name == newName }) {
+                newName = "${provider.name}($count)"
                 count++
             }
-            rule.name = newName
-            rule.id = 0
-            viewModel.saveRule(rule)
-            toast("Imported: $newName")
-        }
-    }
-
-    fun deleteRule(rule: AIRule) {
-        alert(title = "Delete Rule", message = "Are you sure you want to delete ${rule.name}?") {
-            yesButton {
-                viewModel.deleteRule(rule)
-            }
-            noButton()
+            provider.name = newName
+            provider.id = 0
+            viewModel.saveProvider(provider)
+            toast("Imported Provider: $newName")
         }
     }
 

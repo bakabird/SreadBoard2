@@ -6,8 +6,8 @@ import androidx.room.PrimaryKey
 import kotlinx.parcelize.Parcelize
 
 @Parcelize
-@Entity(tableName = "ai_rules")
-data class AIRule(
+@Entity(tableName = "ai_providers")
+data class AIProvider(
     @PrimaryKey(autoGenerate = true)
     var id: Long = 0,
     var name: String = "",
@@ -15,7 +15,5 @@ data class AIRule(
     var apiKey: String = "",
     var model: String = "",
     var concurrentLimit: Int = 1,
-    var enabled: Boolean = true,
-    var summaryPrompt: String = "",
-    var skipRiskPrompt: String = ""
+    var enabled: Boolean = true
 ) : Parcelable

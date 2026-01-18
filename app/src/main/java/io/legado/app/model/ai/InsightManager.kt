@@ -82,12 +82,14 @@ object InsightManager {
 
     fun tasks(): StateFlow<List<AITask>> = tasksFlow.asStateFlow()
 
-    fun getSummaryRuleId(): Long? = appCtx.getPrefString(PreferKey.aiRuleSummary)?.toLongOrNull()
-    fun getSkipRiskRuleId(): Long? = appCtx.getPrefString(PreferKey.aiRuleSkipRisk)?.toLongOrNull()
+    fun getSummaryProviderId(): Long? = appCtx.getPrefString(PreferKey.aiSummaryProviderId)?.toLongOrNull()
+    fun getSummaryPromptId(): Long? = appCtx.getPrefString(PreferKey.aiSummaryPromptId)?.toLongOrNull()
+    fun getSkipRiskProviderId(): Long? = appCtx.getPrefString(PreferKey.aiSkipRiskProviderId)?.toLongOrNull()
+    fun getSkipRiskPromptId(): Long? = appCtx.getPrefString(PreferKey.aiSkipRiskPromptId)?.toLongOrNull()
 
     fun generateSummary(book: Book, chapter: BookChapter, force: Boolean = false): Job? {
-        val ruleId = getSummaryRuleId() ?: return null
-        val rule = appDb.aiRuleDao.get(ruleId) ?: return null
+        val providerId = getSummaryProviderId() ?: return null
+        val provider = appDb.aiProviderDao.get(providerId) ?: return null
 
         val jobKey = "${book.bookUrl}-${chapter.index}-$FEATURE_SUMMARY"
         if (!force) {
@@ -117,7 +119,9 @@ object InsightManager {
                 }
 
                 // Construct Prompt
-                val promptTemplate = if (rule.summaryPrompt.isBlank()) DEFAULT_SUMMARY_PROMPT else rule.summaryPrompt
+                val promptId = getSummaryPromptId()
+                val promptObj = if (promptId != null) appDb.aiSummaryPromptDao.get(promptId) else null
+                val promptTemplate = if (promptObj == null || promptObj.prompt.isBlank()) DEFAULT_SUMMARY_PROMPT else promptObj.prompt
                 val prompt = promptTemplate
                     .replace("{{title}}", chapter.title)
                     .replace("{{content}}", content)
@@ -127,7 +131,7 @@ object InsightManager {
                     mapOf("role" to "user", "content" to prompt)
                 )
 
-                val result = AIClient.generate(rule, messages)
+                val result = AIClient.generate(provider, messages)
 
                 val insight = appDb.chapterInsightDao.get(book.bookUrl, chapter.index)
                     ?: ChapterInsight(bookUrl = book.bookUrl, chapterIndex = chapter.index)
@@ -166,8 +170,8 @@ object InsightManager {
     }
 
     fun generateSkipRisk(book: Book, chapterIndex: Int, force: Boolean = false) {
-         val ruleId = getSkipRiskRuleId() ?: return
-         val rule = appDb.aiRuleDao.get(ruleId) ?: return
+         val providerId = getSkipRiskProviderId() ?: return
+         val provider = appDb.aiProviderDao.get(providerId) ?: return
 
          val jobKey = "${book.bookUrl}-$chapterIndex-$FEATURE_SKIP_RISK"
          if (!force) {
@@ -226,7 +230,9 @@ object InsightManager {
                 }
 
                 // All ready, generate Skip Risk
-                val promptTemplate = if (rule.skipRiskPrompt.isBlank()) DEFAULT_SKIP_RISK_PROMPT else rule.skipRiskPrompt
+                val promptId = getSkipRiskPromptId()
+                val promptObj = if (promptId != null) appDb.aiSkipRiskPromptDao.get(promptId) else null
+                val promptTemplate = if (promptObj == null || promptObj.prompt.isBlank()) DEFAULT_SKIP_RISK_PROMPT else promptObj.prompt
                 val prompt = promptTemplate
                     .replace("{{chapterIndex}}", chapterIndex.toString())
                     .replace("{{context}}", contextBuilder.toString())
@@ -237,7 +243,7 @@ object InsightManager {
                )
 
                DebugLog.d("InsightManager", "Prompt generated, sending to AIClient")
-               val result = AIClient.generate(rule, messages).trim()
+               val result = AIClient.generate(provider, messages).trim()
                DebugLog.d("InsightManager", "AIClient result: $result")
 
                var label = 0
