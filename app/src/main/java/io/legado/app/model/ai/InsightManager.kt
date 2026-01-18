@@ -301,6 +301,23 @@ object InsightManager {
     }
 
 
+    fun generateBatchSummary(book: Book, startIndex: Int, count: Int) {
+        scope.launch {
+            val totalChapters = appDb.bookChapterDao.getChapterCount(book.bookUrl)
+            val end = (startIndex + count).coerceAtMost(totalChapters)
+            DebugLog.d("InsightManager", "Batch generating summary for ${book.name} from $startIndex to $end")
+
+            val chapters = appDb.bookChapterDao.getChapterList(book.bookUrl, startIndex, end - 1)
+            val chapterMap = chapters.associateBy { it.index }
+
+            for (i in startIndex until end) {
+                val chapter = chapterMap[i] ?: continue
+                generateSummary(book, chapter)
+            }
+        }
+    }
+
+
     fun generateBatchSkipRisk(book: Book, startIndex: Int, count: Int) {
         if (!SKIP_RISK_ENABLED) return
 

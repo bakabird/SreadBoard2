@@ -170,9 +170,7 @@ class InsightsBottomSheet(
     private fun showMenu(view: View) {
         val popup = androidx.appcompat.widget.PopupMenu(requireContext(), view)
         popup.menu.add(0, 1, 0, "AI Task Queue")
-        if (InsightManager.SKIP_RISK_ENABLED) {
-            popup.menu.add(0, 2, 0, "Batch Analyze")
-        }
+        popup.menu.add(0, 2, 0, "Batch Analyze")
         popup.menu.add(0, 3, 0, "Batch Delete")
 
         popup.setOnMenuItemClickListener { item ->
@@ -233,9 +231,9 @@ class InsightsBottomSheet(
             .setTitle("Batch Analyze")
             .setItems(options) { _, which ->
                 when (which) {
-                    0 -> InsightManager.generateBatchSkipRisk(book, chapter.index + 1, 10)
-                    1 -> InsightManager.generateBatchSkipRisk(book, chapter.index + 1, 20)
-                    2 -> InsightManager.generateBatchSkipRisk(book, chapter.index + 1, 50)
+                    0 -> InsightManager.generateBatchSummary(book, chapter.index + 1, 10)
+                    1 -> InsightManager.generateBatchSummary(book, chapter.index + 1, 20)
+                    2 -> InsightManager.generateBatchSummary(book, chapter.index + 1, 50)
                     3 -> showCustomBatchDialog()
                 }
             }
@@ -264,7 +262,7 @@ class InsightsBottomSheet(
             .setPositiveButton("Confirm") { _, _ ->
                 val count = editText.text.toString().toIntOrNull()
                 if (count != null && count > 0) {
-                    InsightManager.generateBatchSkipRisk(book, chapter.index + 1, count)
+                    InsightManager.generateBatchSummary(book, chapter.index + 1, count)
                 }
             }
             .setNegativeButton("Cancel", null)
