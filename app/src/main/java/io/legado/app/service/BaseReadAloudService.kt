@@ -65,9 +65,8 @@ import splitties.systemservices.powerManager
 import splitties.systemservices.telephonyManager
 import splitties.systemservices.wifiManager
 
-import io.legado.app.utils.getPrefStringSet
 import io.legado.app.data.appDb
-import io.legado.app.data.entities.ChapterInsight
+import io.legado.app.model.ai.InsightManager
 
 /**
  * 朗读服务
@@ -254,48 +253,40 @@ abstract class BaseReadAloudService : BaseService(),
                 return@execute
             }
 
-            // Auto-Skip Check
             isReadingSummary = false
             val book = ReadBook.book
             if (book != null && getPrefBoolean(PreferKey.readAloudAutoSkip)) {
                 val chapterIndex = textChapter.chapter.index
                 val insight = appDb.chapterInsightDao.get(book.bookUrl, chapterIndex)
+                val summary = insight?.summary
 
-                if (insight == null || insight.skipRiskLabel == 0) {
+                if (summary.isNullOrBlank()) {
                     waitingForInsight = true
+                    if (insight?.status == InsightManager.STATUS_FAILED) {
+                        InsightManager.generateSummary(book, textChapter.chapter, force = true)
+                    } else {
+                        InsightManager.generateSummary(book, textChapter.chapter)
+                    }
                     launch(Main) {
-                        toastOnUi(R.string.waiting_for_skip_risk)
+                        toastOnUi(R.string.waiting_for_summary)
                         pauseReadAloud(false)
                     }
                     return@execute
                 }
 
-                val skipConditions = getPrefStringSet(PreferKey.readAloudSkipConditions) ?: emptySet()
-                if (skipConditions.contains(insight.skipRiskLabel.toString())) {
-                    val summary = insight.summary
-                    if (summary.isNullOrBlank()) {
-                        waitingForInsight = true
-                        launch(Main) {
-                            toastOnUi(R.string.waiting_for_summary)
-                            pauseReadAloud(false)
-                        }
-                        return@execute
-                    }
-
-                    isReadingSummary = true
-                    launch(Main) {
-                        toastOnUi(R.string.auto_skip_reading_summary)
-                    }
-                    contentList = summary.split("\n").filter { it.isNotEmpty() }
-                    nowSpeak = 0
-                    readAloudNumber = 0
-                    paragraphStartPos = 0
-
-                    launch(Main) {
-                        if (play) play() else pageChanged = true
-                    }
-                    return@execute
+                isReadingSummary = true
+                launch(Main) {
+                    toastOnUi(R.string.auto_skip_reading_summary)
                 }
+                contentList = summary.split("\n").filter { it.isNotEmpty() }
+                nowSpeak = 0
+                readAloudNumber = 0
+                paragraphStartPos = 0
+
+                launch(Main) {
+                    if (play) play() else pageChanged = true
+                }
+                return@execute
             }
 
             readAloudNumber = textChapter.getReadLength(pageIndex) + startPos

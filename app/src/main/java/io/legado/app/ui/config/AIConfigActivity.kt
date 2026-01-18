@@ -123,6 +123,13 @@ class AIConfigActivity : VMBaseActivity<ActivityAiConfigBinding, AIConfigViewMod
             showBindingSelector(false)
         }
 
+        if (!InsightManager.SKIP_RISK_ENABLED) {
+            binding.tvSkipRiskDisabledNotice.text = "Skip Risk feature is temporarily closed. Configurations are kept."
+            binding.tvSkipRiskDisabledNotice.visibility = android.view.View.VISIBLE
+        } else {
+            binding.tvSkipRiskDisabledNotice.visibility = android.view.View.GONE
+        }
+
         binding.swRequestPreview.isChecked = getPrefBoolean(PreferKey.aiInsightRequestPreview, false)
         binding.swRequestPreview.setOnCheckedChangeListener { _, isChecked ->
             putPrefBoolean(PreferKey.aiInsightRequestPreview, isChecked)

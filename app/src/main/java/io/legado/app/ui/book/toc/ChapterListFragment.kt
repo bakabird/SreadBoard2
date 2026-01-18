@@ -96,20 +96,20 @@ class ChapterListFragment : VMBaseFragment<TocViewModel>(R.layout.fragment_chapt
                 val newSkipRiskLabels = HashMap<Int, Int>()
                 val newHasSummary = HashMap<Int, Boolean>()
 
-                insights.forEach { 
-                    if (it.skipRiskLabel > 0) {
+                insights.forEach {
+                    if (io.legado.app.model.ai.InsightManager.SKIP_RISK_ENABLED && it.skipRiskLabel > 0) {
                         newSkipRiskLabels[it.chapterIndex] = it.skipRiskLabel
                     }
                     if (!it.summary.isNullOrEmpty()) {
                         newHasSummary[it.chapterIndex] = true
                     }
                 }
-                
+
                 adapter.skipRiskLabels.clear()
                 adapter.skipRiskLabels.putAll(newSkipRiskLabels)
                 adapter.hasSummary.clear()
                 adapter.hasSummary.putAll(newHasSummary)
-                
+
                 withContext(Main) {
                     adapter.notifyItemRangeChanged(0, adapter.itemCount, true)
                 }

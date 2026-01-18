@@ -59,14 +59,18 @@ class InsightsBottomSheet(
         }
 
         InsightManager.generateSummary(book, chapter)
-        InsightManager.generateSkipRisk(book, chapter.index)
 
         binding.btnRetrySummary.setOnClickListener {
             InsightManager.generateSummary(book, chapter, force = true)
         }
 
-        binding.btnRetrySkipRisk.setOnClickListener {
-            InsightManager.generateSkipRisk(book, chapter.index, force = true)
+        if (!InsightManager.SKIP_RISK_ENABLED) {
+            binding.btnRetrySkipRisk.gone()
+        } else {
+            InsightManager.generateSkipRisk(book, chapter.index)
+            binding.btnRetrySkipRisk.setOnClickListener {
+                InsightManager.generateSkipRisk(book, chapter.index, force = true)
+            }
         }
 
         binding.btnSkipChapter.setOnClickListener {
@@ -77,7 +81,9 @@ class InsightsBottomSheet(
 
     private fun initTabs() {
         binding.tabLayout.addTab(binding.tabLayout.newTab().setText("Summary"))
-        binding.tabLayout.addTab(binding.tabLayout.newTab().setText("Skip Risk"))
+        if (InsightManager.SKIP_RISK_ENABLED) {
+            binding.tabLayout.addTab(binding.tabLayout.newTab().setText("Skip Risk"))
+        }
 
         binding.tabLayout.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
             override fun onTabSelected(tab: TabLayout.Tab?) {
@@ -125,30 +131,37 @@ class InsightsBottomSheet(
                     }
                 }
 
-                // Update Skip Risk UI
-                if (insight.skipRiskLabel > 0) {
-                    binding.tvSkipRiskLabel.text = when(insight.skipRiskLabel) {
-                        1 -> "Water Chapter"
-                        2 -> "Low Value"
-                        3 -> "Caution Jump"
-                        4 -> "Must Read"
-                        else -> "Unknown"
-                    }
-                    val color = when(insight.skipRiskLabel) {
-                        1 -> 0xFF888888.toInt() // Gray
-                        2 -> 0xFFFFA500.toInt() // Orange
-                        3 -> 0xFFFF4500.toInt() // Red-Orange
-                        4 -> 0xFF008000.toInt() // Green
-                        else -> 0xFF888888.toInt()
-                    }
-                    binding.tvSkipRiskLabel.backgroundTintList = ColorStateList.valueOf(color)
-                    binding.tvSkipRiskStatus.gone()
+                if (!InsightManager.SKIP_RISK_ENABLED) {
+                    binding.tvSkipRiskLabel.text = "Skip Risk Disabled"
+                    binding.tvSkipRiskLabel.backgroundTintList = ColorStateList.valueOf(0xFF888888.toInt())
+                    binding.tvSkipRiskStatus.text = "Skip Risk feature is temporarily turned off."
+                    binding.tvSkipRiskStatus.visible()
                     binding.btnRetrySkipRisk.gone()
                 } else {
-                     binding.tvSkipRiskLabel.text = "Analyzing..."
-                     binding.tvSkipRiskLabel.backgroundTintList = ColorStateList.valueOf(0xFF888888.toInt())
-                     binding.tvSkipRiskStatus.text = "Waiting for context..."
-                     binding.tvSkipRiskStatus.visible()
+                    if (insight.skipRiskLabel > 0) {
+                        binding.tvSkipRiskLabel.text = when (insight.skipRiskLabel) {
+                            1 -> "Water Chapter"
+                            2 -> "Low Value"
+                            3 -> "Caution Jump"
+                            4 -> "Must Read"
+                            else -> "Unknown"
+                        }
+                        val color = when (insight.skipRiskLabel) {
+                            1 -> 0xFF888888.toInt()
+                            2 -> 0xFFFFA500.toInt()
+                            3 -> 0xFFFF4500.toInt()
+                            4 -> 0xFF008000.toInt()
+                            else -> 0xFF888888.toInt()
+                        }
+                        binding.tvSkipRiskLabel.backgroundTintList = ColorStateList.valueOf(color)
+                        binding.tvSkipRiskStatus.gone()
+                        binding.btnRetrySkipRisk.gone()
+                    } else {
+                        binding.tvSkipRiskLabel.text = "Analyzing..."
+                        binding.tvSkipRiskLabel.backgroundTintList = ColorStateList.valueOf(0xFF888888.toInt())
+                        binding.tvSkipRiskStatus.text = "Waiting for context..."
+                        binding.tvSkipRiskStatus.visible()
+                    }
                 }
             }
         }
@@ -157,7 +170,9 @@ class InsightsBottomSheet(
     private fun showMenu(view: View) {
         val popup = androidx.appcompat.widget.PopupMenu(requireContext(), view)
         popup.menu.add(0, 1, 0, "AI Task Queue")
-        popup.menu.add(0, 2, 0, "Batch Analyze")
+        if (InsightManager.SKIP_RISK_ENABLED) {
+            popup.menu.add(0, 2, 0, "Batch Analyze")
+        }
         popup.menu.add(0, 3, 0, "Batch Delete")
 
         popup.setOnMenuItemClickListener { item ->

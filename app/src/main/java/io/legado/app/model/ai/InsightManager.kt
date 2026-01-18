@@ -24,6 +24,7 @@ object InsightManager {
 
     const val FEATURE_SUMMARY = "summary"
     const val FEATURE_SKIP_RISK = "skip_risk"
+    const val SKIP_RISK_ENABLED = false
 
     // Status constants matching ChapterInsight
     const val STATUS_NONE = 0
@@ -170,6 +171,8 @@ object InsightManager {
     }
 
     fun generateSkipRisk(book: Book, chapterIndex: Int, force: Boolean = false) {
+         if (!SKIP_RISK_ENABLED) return
+
          val providerId = getSkipRiskProviderId() ?: return
          val provider = appDb.aiProviderDao.get(providerId) ?: return
 
@@ -296,6 +299,8 @@ object InsightManager {
 
 
     fun generateBatchSkipRisk(book: Book, startIndex: Int, count: Int) {
+        if (!SKIP_RISK_ENABLED) return
+
         scope.launch {
             val totalChapters = appDb.bookChapterDao.getChapterCount(book.bookUrl)
             val end = (startIndex + count).coerceAtMost(totalChapters)
