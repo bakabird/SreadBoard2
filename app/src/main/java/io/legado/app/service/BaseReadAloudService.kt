@@ -37,6 +37,7 @@ import io.legado.app.help.MediaHelp
 import io.legado.app.help.config.AppConfig
 import io.legado.app.help.coroutine.Coroutine
 import io.legado.app.help.glide.ImageLoader
+import io.legado.app.help.book.BookHelp
 import io.legado.app.lib.permission.Permissions
 import io.legado.app.lib.permission.PermissionsCompat
 import io.legado.app.model.ReadAloud
@@ -275,8 +276,15 @@ abstract class BaseReadAloudService : BaseService(),
                 }
 
                 isReadingSummary = true
+                val rawContent = BookHelp.getContent(book, textChapter.chapter)
+                val normalizedLen = rawContent?.replace(Regex("\\p{P}|\\s+"), "")?.length ?: 0
+                val msgId = when {
+                    rawContent.isNullOrBlank() -> R.string.read_aloud_auto_skip_summary_empty
+                    normalizedLen in 1..499 -> R.string.read_aloud_auto_skip_summary_short
+                    else -> R.string.auto_skip_reading_summary
+                }
                 launch(Main) {
-                    toastOnUi(R.string.auto_skip_reading_summary)
+                    toastOnUi(msgId)
                 }
                 contentList = summary.split("\n").filter { it.isNotEmpty() }
                 nowSpeak = 0

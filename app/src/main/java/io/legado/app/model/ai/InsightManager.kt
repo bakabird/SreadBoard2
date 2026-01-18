@@ -89,8 +89,6 @@ object InsightManager {
     fun getSkipRiskPromptId(): Long? = appCtx.getPrefString(PreferKey.aiSkipRiskPromptId)?.toLongOrNull()
 
     fun generateSummary(book: Book, chapter: BookChapter, force: Boolean = false): Job? {
-        val providerId = getSummaryProviderId() ?: return null
-        val provider = appDb.aiProviderDao.get(providerId) ?: return null
 
         val jobKey = "${book.bookUrl}-${chapter.index}-$FEATURE_SUMMARY"
         if (!force) {
@@ -113,31 +111,36 @@ object InsightManager {
             try {
                 updateStatus(book.bookUrl, chapter.index, STATUS_GENERATING)
 
-                // Get Content
                 val content = BookHelp.getContent(book, chapter)
+                val normalizedLen = content?.replace(Regex("\\p{P}|\\s+"), "")?.length ?: 0
+                var summaryText: String? = null
                 if (content.isNullOrBlank()) {
-                     throw Exception("Content empty")
+                    summaryText = if (chapter.title.isBlank()) " \n " else chapter.title
+                } else if (normalizedLen in 1..499) {
+                    summaryText = content
                 }
 
-                // Construct Prompt
-                val promptId = getSummaryPromptId()
-                val promptObj = if (promptId != null) appDb.aiSummaryPromptDao.get(promptId) else null
-                val promptTemplate = if (promptObj == null || promptObj.prompt.isBlank()) DEFAULT_SUMMARY_PROMPT else promptObj.prompt
-                val prompt = promptTemplate
-                    .replace("{{title}}", chapter.title)
-                    .replace("{{content}}", content)
-
-                val messages = listOf(
-                    mapOf("role" to "system", "content" to "You are a helpful reading assistant."),
-                    mapOf("role" to "user", "content" to prompt)
-                )
-
-                val result = AIClient.generate(provider, messages)
+                if (summaryText == null) {
+                    val providerId = getSummaryProviderId() ?: throw Exception("Summary Provider not configured")
+                    val provider = appDb.aiProviderDao.get(providerId) ?: throw Exception("Summary Provider not available")
+                    val promptId = getSummaryPromptId()
+                    val promptObj = if (promptId != null) appDb.aiSummaryPromptDao.get(promptId) else null
+                    val promptTemplate = if (promptObj == null || promptObj.prompt.isBlank()) DEFAULT_SUMMARY_PROMPT else promptObj.prompt
+                    val prompt = promptTemplate
+                        .replace("{{title}}", chapter.title)
+                        .replace("{{content}}", content ?: "")
+                    val messages = listOf(
+                        mapOf("role" to "system", "content" to "You are a helpful reading assistant."),
+                        mapOf("role" to "user", "content" to prompt)
+                    )
+                    val result = AIClient.generate(provider, messages)
+                    summaryText = result
+                }
 
                 val insight = appDb.chapterInsightDao.get(book.bookUrl, chapter.index)
                     ?: ChapterInsight(bookUrl = book.bookUrl, chapterIndex = chapter.index)
 
-                insight.summary = result
+                insight.summary = summaryText
                 insight.status = STATUS_READY
                 insight.timestamp = System.currentTimeMillis()
 

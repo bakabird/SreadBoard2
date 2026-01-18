@@ -1240,4 +1240,6 @@
     <string name="waiting_for_skip_risk">正在等待 AI 跳读风险分析...</string>
     <string name="waiting_for_summary">正在等待章节概括...</string>
     <string name="auto_skip_reading_summary">基于 AI 洞察跳过正文，转为朗读概括。</string>
+    <string name="read_aloud_auto_skip_summary_empty">本章无正文，朗读章节标题</string>
+    <string name="read_aloud_auto_skip_summary_short">正文较短，直接朗读正文作为概括</string>
 </resources>
