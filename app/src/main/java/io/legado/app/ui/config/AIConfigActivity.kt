@@ -70,6 +70,14 @@ class AIConfigActivity : VMBaseActivity<ActivityAiConfigBinding, AIConfigViewMod
                 importConfig()
                 return true
             }
+            R.id.menu_export_summary_combo -> {
+                exportSummaryCombo()
+                return true
+            }
+            R.id.menu_export_skip_risk_combo -> {
+                exportSkipRiskCombo()
+                return true
+            }
         }
         return super.onCompatOptionsItemSelected(item)
     }
@@ -425,15 +433,34 @@ class AIConfigActivity : VMBaseActivity<ActivityAiConfigBinding, AIConfigViewMod
             return
         }
 
-        // Try to parse as Provider
+        try {
+            val summaryCombo = GSON.fromJsonObject<SummaryCombo>(clipText).getOrNull()
+            val kind = summaryCombo?.kind
+            val isSummaryKind = kind == null || kind == "summary_combo"
+            if (isSummaryKind && summaryCombo != null && summaryCombo.provider != null && summaryCombo.prompt != null && summaryCombo.provider.baseUrl.isNotEmpty()) {
+                importSummaryCombo(summaryCombo)
+                return
+            }
+        } catch (e: Exception) {
+        }
+
+        try {
+            val skipCombo = GSON.fromJsonObject<SkipRiskCombo>(clipText).getOrNull()
+            if (skipCombo != null && skipCombo.kind == "skip_risk_combo" && skipCombo.provider != null && skipCombo.prompt != null && skipCombo.provider.baseUrl.isNotEmpty()) {
+                importSkipRiskCombo(skipCombo)
+                return
+            }
+        } catch (e: Exception) {
+        }
+
         try {
             val provider = GSON.fromJsonObject<AIProvider>(clipText).getOrNull()
             if (provider != null && provider.baseUrl.isNotEmpty()) {
-                // Save
                 saveImportedProvider(provider)
                 return
             }
-        } catch (e: Exception) {}
+        } catch (e: Exception) {
+        }
 
         toast("Could not identify valid config from clipboard")
     }
@@ -454,7 +481,175 @@ class AIConfigActivity : VMBaseActivity<ActivityAiConfigBinding, AIConfigViewMod
         }
     }
 
+    private fun importSummaryCombo(combo: SummaryCombo) {
+        val provider = combo.provider ?: return
+        val prompt = combo.prompt ?: return
+        lifecycleScope.launch {
+            val providers = providerAdapter.getItems()
+            var providerName = provider.name.ifBlank { "AI Provider" }
+            var count = 1
+            while (providers.any { it.name == providerName }) {
+                providerName = "${provider.name}($count)"
+                count++
+            }
+            provider.name = providerName
+            provider.id = 0
+            viewModel.saveProvider(provider)
+
+            val prompts = summaryPromptAdapter.getItems()
+            var promptName = prompt.name.ifBlank { "Summary Prompt" }
+            var promptCount = 1
+            while (prompts.any { it.name == promptName }) {
+                promptName = "${prompt.name}($promptCount)"
+                promptCount++
+            }
+            val newPrompt = AISummaryPrompt(name = promptName, prompt = prompt.prompt)
+            viewModel.saveSummaryPrompt(newPrompt)
+
+            toast("Imported Summary combo")
+        }
+    }
+
+    private fun importSkipRiskCombo(combo: SkipRiskCombo) {
+        val provider = combo.provider ?: return
+        val prompt = combo.prompt ?: return
+        lifecycleScope.launch {
+            val providers = providerAdapter.getItems()
+            var providerName = provider.name.ifBlank { "AI Provider" }
+            var count = 1
+            while (providers.any { it.name == providerName }) {
+                providerName = "${provider.name}($count)"
+                count++
+            }
+            provider.name = providerName
+            provider.id = 0
+            viewModel.saveProvider(provider)
+
+            val prompts = skipRiskPromptAdapter.getItems()
+            var promptName = prompt.name.ifBlank { "Skip Risk Prompt" }
+            var promptCount = 1
+            while (prompts.any { it.name == promptName }) {
+                promptName = "${prompt.name}($promptCount)"
+                promptCount++
+            }
+            val newPrompt = AISkipRiskPrompt(name = promptName, prompt = prompt.prompt)
+            viewModel.saveSkipRiskPrompt(newPrompt)
+
+            toast("Imported Skip Risk combo")
+        }
+    }
+
+    private fun exportSummaryCombo() {
+        val providers = providerAdapter.getItems()
+        val summaryPrompts = summaryPromptAdapter.getItems()
+
+        val providerId = getPrefString(PreferKey.aiSummaryProviderId)?.toLongOrNull()
+        if (providerId == null) {
+            toast("No Summary binding set.")
+            return
+        }
+        val provider = providers.find { it.id == providerId }
+        if (provider == null) {
+            toast("No Summary provider found.")
+            return
+        }
+
+        val promptId = getPrefString(PreferKey.aiSummaryPromptId)?.toLongOrNull()
+        val prompt = if (promptId != null && promptId > 0) {
+            summaryPrompts.find { it.id == promptId }
+        } else {
+            null
+        }
+        val effectivePrompt = prompt ?: AISummaryPrompt(name = "Default", prompt = InsightManager.DEFAULT_SUMMARY_PROMPT)
+
+        alert(title = "Export Summary Combo", message = "Do you want to include the API Key?") {
+            positiveButton("Include") {
+                val combo = SummaryCombo(
+                    kind = "summary_combo",
+                    provider = provider,
+                    prompt = effectivePrompt
+                )
+                val json = GSON.toJson(combo)
+                sendToClip(json)
+                toast("Summary combo exported (with Key)")
+            }
+            negativeButton("Exclude") {
+                val safeProvider = provider.copy(apiKey = "")
+                val combo = SummaryCombo(
+                    kind = "summary_combo",
+                    provider = safeProvider,
+                    prompt = effectivePrompt
+                )
+                val json = GSON.toJson(combo)
+                sendToClip(json)
+                toast("Summary combo exported (without Key)")
+            }
+            neutralButton("Cancel")
+        }
+    }
+
+    private fun exportSkipRiskCombo() {
+        val providers = providerAdapter.getItems()
+        val skipRiskPrompts = skipRiskPromptAdapter.getItems()
+
+        val providerId = getPrefString(PreferKey.aiSkipRiskProviderId)?.toLongOrNull()
+        if (providerId == null) {
+            toast("No Skip Risk binding set.")
+            return
+        }
+        val provider = providers.find { it.id == providerId }
+        if (provider == null) {
+            toast("No Skip Risk provider found.")
+            return
+        }
+
+        val promptId = getPrefString(PreferKey.aiSkipRiskPromptId)?.toLongOrNull()
+        val prompt = if (promptId != null && promptId > 0) {
+            skipRiskPrompts.find { it.id == promptId }
+        } else {
+            null
+        }
+        val effectivePrompt = prompt ?: AISkipRiskPrompt(name = "Default", prompt = InsightManager.DEFAULT_SKIP_RISK_PROMPT)
+
+        alert(title = "Export Skip Risk Combo", message = "Do you want to include the API Key?") {
+            positiveButton("Include") {
+                val combo = SkipRiskCombo(
+                    kind = "skip_risk_combo",
+                    provider = provider,
+                    prompt = effectivePrompt
+                )
+                val json = GSON.toJson(combo)
+                sendToClip(json)
+                toast("Skip Risk combo exported (with Key)")
+            }
+            negativeButton("Exclude") {
+                val safeProvider = provider.copy(apiKey = "")
+                val combo = SkipRiskCombo(
+                    kind = "skip_risk_combo",
+                    provider = safeProvider,
+                    prompt = effectivePrompt
+                )
+                val json = GSON.toJson(combo)
+                sendToClip(json)
+                toast("Skip Risk combo exported (without Key)")
+            }
+            neutralButton("Cancel")
+        }
+    }
+
     private fun toast(msg: String) {
         toastOnUi(msg)
     }
+
+    private data class SummaryCombo(
+        val kind: String? = null,
+        val provider: AIProvider? = null,
+        val prompt: AISummaryPrompt? = null
+    )
+
+    private data class SkipRiskCombo(
+        val kind: String? = null,
+        val provider: AIProvider? = null,
+        val prompt: AISkipRiskPrompt? = null
+    )
 }

@@ -11,6 +11,14 @@
         app:showAsAction="ifRoom|withText" />
     <item
         android:id="@+id/menu_import_rule"
-        android:title="Import AI Rule"
+        android:title="Import AI Config"
+        app:showAsAction="never" />
+    <item
+        android:id="@+id/menu_export_summary_combo"
+        android:title="Export Summary Combo"
+        app:showAsAction="never" />
+    <item
+        android:id="@+id/menu_export_skip_risk_combo"
+        android:title="Export Skip Risk Combo"
         app:showAsAction="never" />
 </menu>
