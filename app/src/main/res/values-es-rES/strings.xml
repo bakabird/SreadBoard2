@@ -1225,4 +1225,14 @@
     <string name="auto_check_new_backup_t">自动检查新备份</string>
     <string name="auto_check_new_backup_s">打开软件时检查是否有新备份，有新备份时提示是否更新</string>
     <string name="sys_image_picker">系统图片选择器</string>
+    <string name="read_aloud_auto_skip">Salto Automático (Beta)</string>
+    <string name="read_aloud_auto_skip_summary">Saltar capítulos basado en información de IA (Riesgo de Salto)</string>
+    <string name="read_aloud_skip_conditions">Condiciones de Salto</string>
+    <string name="read_aloud_skip_filler">Relleno</string>
+    <string name="read_aloud_skip_low_value">Bajo Valor</string>
+    <string name="read_aloud_skip_caution">Saltar con Precaución</string>
+    <string name="read_aloud_skip_must_read">Lectura Obligatoria</string>
+    <string name="waiting_for_skip_risk">Esperando análisis de riesgo de salto de IA...</string>
+    <string name="waiting_for_summary">Esperando resumen del capítulo...</string>
+    <string name="auto_skip_reading_summary">Saltando capítulo basado en información de IA, leyendo resumen en su lugar.</string>
 </resources>

@@ -1219,4 +1219,14 @@
     <string name="auto_check_new_backup_t">自动检查新备份</string>
     <string name="auto_check_new_backup_s">打开软件时检查是否有新备份，有新备份时提示是否更新</string>
     <string name="sys_image_picker">系统图片选择器</string>
+    <string name="read_aloud_auto_skip">Tự động bỏ qua (Beta)</string>
+    <string name="read_aloud_auto_skip_summary">Bỏ qua chương dựa trên thông tin chi tiết AI (Rủi ro bỏ qua)</string>
+    <string name="read_aloud_skip_conditions">Điều kiện bỏ qua</string>
+    <string name="read_aloud_skip_filler">Nội dung đệm</string>
+    <string name="read_aloud_skip_low_value">Giá trị thấp</string>
+    <string name="read_aloud_skip_caution">Cẩn thận khi bỏ qua</string>
+    <string name="read_aloud_skip_must_read">Phải đọc</string>
+    <string name="waiting_for_skip_risk">Đang chờ phân tích rủi ro bỏ qua của AI...</string>
+    <string name="waiting_for_summary">Đang chờ tóm tắt chương...</string>
+    <string name="auto_skip_reading_summary">Bỏ qua chương dựa trên thông tin chi tiết AI, thay vào đó đọc tóm tắt.</string>
 </resources>

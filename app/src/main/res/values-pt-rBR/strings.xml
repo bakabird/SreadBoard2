@@ -1228,4 +1228,14 @@
     <string name="auto_check_new_backup_t">自动检查新备份</string>
     <string name="auto_check_new_backup_s">打开软件时检查是否有新备份，有新备份时提示是否更新</string>
     <string name="sys_image_picker">系统图片选择器</string>
+    <string name="read_aloud_auto_skip">Pular Automático (Beta)</string>
+    <string name="read_aloud_auto_skip_summary">Pular capítulos com base em insights de IA (Risco de Pulo)</string>
+    <string name="read_aloud_skip_conditions">Condições de Pulo</string>
+    <string name="read_aloud_skip_filler">Enchimento</string>
+    <string name="read_aloud_skip_low_value">Baixo Valor</string>
+    <string name="read_aloud_skip_caution">Pular com Cautela</string>
+    <string name="read_aloud_skip_must_read">Leitura Obrigatória</string>
+    <string name="waiting_for_skip_risk">Aguardando análise de risco de pulo da IA...</string>
+    <string name="waiting_for_summary">Aguardando resumo do capítulo...</string>
+    <string name="auto_skip_reading_summary">Pulando capítulo com base no Insight da IA, lendo resumo em vez disso.</string>
 </resources>

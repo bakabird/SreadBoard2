@@ -1224,4 +1224,14 @@
     <string name="auto_check_new_backup_t">自动检查新备份</string>
     <string name="auto_check_new_backup_s">打开软件时检查是否有新备份，有新备份时提示是否更新</string>
     <string name="sys_image_picker">系统图片选择器</string>
+    <string name="read_aloud_auto_skip">智能跳讀 (Beta)</string>
+    <string name="read_aloud_auto_skip_summary">基於 AI 洞察跳過章節 (跳讀風險)</string>
+    <string name="read_aloud_skip_conditions">跳過條件</string>
+    <string name="read_aloud_skip_filler">注水</string>
+    <string name="read_aloud_skip_low_value">低價值</string>
+    <string name="read_aloud_skip_caution">謹慎跳過</string>
+    <string name="read_aloud_skip_must_read">必讀</string>
+    <string name="waiting_for_skip_risk">正在等待 AI 跳讀風險分析...</string>
+    <string name="waiting_for_summary">正在等待章節概括...</string>
+    <string name="auto_skip_reading_summary">基於 AI 洞察跳過正文，轉為朗讀概括。</string>
 </resources>

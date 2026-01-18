@@ -1230,4 +1230,14 @@
     <string name="auto_check_new_backup_t">自动检查新备份</string>
     <string name="auto_check_new_backup_s">打开软件时检查是否有新备份，有新备份时提示是否更新</string>
     <string name="sys_image_picker">系统图片选择器</string>
+    <string name="read_aloud_auto_skip">智能跳读 (Beta)</string>
+    <string name="read_aloud_auto_skip_summary">基于 AI 洞察跳过章节 (跳读风险)</string>
+    <string name="read_aloud_skip_conditions">跳过条件</string>
+    <string name="read_aloud_skip_filler">注水</string>
+    <string name="read_aloud_skip_low_value">低价值</string>
+    <string name="read_aloud_skip_caution">谨慎跳过</string>
+    <string name="read_aloud_skip_must_read">必读</string>
+    <string name="waiting_for_skip_risk">正在等待 AI 跳读风险分析...</string>
+    <string name="waiting_for_summary">正在等待章节概括...</string>
+    <string name="auto_skip_reading_summary">基于 AI 洞察跳过正文，转为朗读概括。</string>
 </resources>

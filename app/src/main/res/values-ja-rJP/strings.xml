@@ -1228,4 +1228,14 @@
     <string name="auto_check_new_backup_t">自动检查新备份</string>
     <string name="auto_check_new_backup_s">打开软件时检查是否有新备份，有新备份时提示是否更新</string>
     <string name="sys_image_picker">系统图片选择器</string>
+    <string name="read_aloud_auto_skip">自動スキップ (ベータ版)</string>
+    <string name="read_aloud_auto_skip_summary">AIインサイトに基づいて章をスキップ (スキップリスク)</string>
+    <string name="read_aloud_skip_conditions">スキップ条件</string>
+    <string name="read_aloud_skip_filler">水増し</string>
+    <string name="read_aloud_skip_low_value">低価値</string>
+    <string name="read_aloud_skip_caution">慎重にスキップ</string>
+    <string name="read_aloud_skip_must_read">必読</string>
+    <string name="waiting_for_skip_risk">AIスキップリスク分析を待機中...</string>
+    <string name="waiting_for_summary">章の要約を待機中...</string>
+    <string name="auto_skip_reading_summary">AIインサイトに基づいて章をスキップし、要約を読み上げます。</string>
 </resources>
